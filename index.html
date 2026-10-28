@@ -35,7 +35,9 @@ a.res i{display:inline-block;font-style:normal;font-size:12px;font-weight:700;ma
 <div class="c"><div id="app"><p style="padding:30px 0;text-align:center">Loading...</p></div></div>
 <script>
 /* Stand-in for google.script.run: each call goes to the Apps Script web app named in the link (?a=...) as plain text. */
-var Q=new URLSearchParams(location.search),API='https://script.google.com/macros/s/'+(Q.get('a')||'')+'/exec';
+/* Used only when the link has no ?a=... part, so the home link can be just the page address. Same ID as in Setup B6 (/macros/s/THIS PART/exec). */
+var DEFAULT_A='AKfycbyrh9jmOp6Kw6EjuAKg8CLZv6d274zaMhXT-Hfzzpt76Mxt4z6ZJDjXN0nGGlaF40NM';
+var Q=new URLSearchParams(location.search),API='https://script.google.com/macros/s/'+(Q.get('a')||DEFAULT_A)+'/exec';
 (function(){
   function mk(ok,bad){return new Proxy({},{get:function(t,n){
     if(n==='withSuccessHandler')return function(f){return mk(f,bad)};
@@ -50,7 +52,7 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 })();
 </script>
 <script>
-var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||'';
+var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
