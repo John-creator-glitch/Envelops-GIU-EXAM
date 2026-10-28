@@ -11,9 +11,11 @@
 .msg.ok{display:block;background:#d9ead3;color:#0b3d1c}.msg.err{display:block;background:#f8d7d3;color:#7a1410}
 button{width:100%;font-size:18px;padding:16px;margin:6px 0 0;border:0;border-radius:10px;background:#0e3b2e;color:#fff;font-weight:bold}button:disabled{background:#9aa8a1}
 .lnk{background:none;color:#0e3b2e;font-size:14px;font-weight:normal;text-decoration:underline;padding:10px;margin-top:2px}
-label{display:block;font-size:14px;margin:10px 0 4px;color:#35453d}input{width:100%;font-size:22px;padding:12px;border:1px solid #99a;border-radius:8px}
-#who{font-size:16px;padding:10px}.chk{font-size:14px;font-weight:bold;margin:10px 0 2px;min-height:20px}.chk.good{color:#1b6b2f}.chk.bad{color:#b3261e}
-.big{font-size:17px;text-align:center;padding:6px}.hint{font-size:12px;color:#7a867f;margin-top:6px}
+a.lk{display:block;text-align:center;color:#0e3b2e;font-size:14px;padding:12px;text-decoration:underline}
+label{display:block;font-size:14px;margin:10px 0 4px;color:#35453d}input{width:100%;font-size:20px;padding:11px;border:1px solid #99a;border-radius:8px}
+.chk{font-size:14px;font-weight:bold;margin:10px 0 2px;min-height:20px}.chk.good{color:#1b6b2f}.chk.bad{color:#b3261e}
+.big{font-size:17px;text-align:center;padding:6px}.hint{font-size:12px;color:#7a867f;margin-top:6px}.warn{font-size:13px;color:#7a1410;background:#f8d7d3;border-radius:8px;padding:8px;margin:6px 0}
+a.res{display:block;text-decoration:none;color:inherit;border:1px solid #d5ddd8;border-radius:10px;padding:10px;margin:8px 0}a.res b{display:block;font-size:15px}a.res span{font-size:12px;color:#4a5a52;display:block}
 </style></head><body><div class="c"><div id="app"><p style="padding:30px 0;text-align:center">Loading...</p></div></div>
 <script>
 /* Stand-in for google.script.run: each call goes to the Apps Script web app named in the link (?a=...) as plain text. No Google page is opened on the phone. */
@@ -32,94 +34,127 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 })();
 </script>
 <script>
-var ID=Q.get('e')||'';
-var KEY=Q.get('k')||'';
-var INIT=null;
+var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||'';
 var $=function(x){return document.getElementById(x)};
-var o=INIT,busy=false,showFix=false,dn='',da='0',who='',emp='',tState='',tName='',tNote='',tCan=true,msg='',kind='';
-try{who=localStorage.getItem('envWho')||'';emp=localStorage.getItem('envEmp')||''}catch(e){}
+var o=null,busy=false,showFix=false,msg='',kind='',res=null;
+var emp='',empName='',empNote='',eState='',eCan=false;
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:''};
+try{emp=localStorage.getItem('envEmp')||''}catch(e){}
+S.emp=emp;
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function row(a,b){return '<div class="row"><span>'+esc(a)+'</span><b>'+esc(b)+'</b></div>'}
-function liveCheck(){
-  var el=$('chk');if(!el||!o)return;var n=$('n').value,a=$('a').value;dn=n;da=a;
-  if(n===''){el.className='chk';el.textContent='';return}
-  var t=Number(n)+(a===''?0:Number(a));
-  if(t===Number(o.seated)){el.className='chk good';el.textContent=n+' filled + '+(a||0)+' absent = '+t+'  (matches '+o.seated+' seated)'}
-  else{el.className='chk bad';el.textContent=n+' filled + '+(a||0)+' absent = '+t+', but '+o.seated+' seated. Will be flagged.'}
-}
-function tSrc(x){return x==='Listed'?'':'Self-registered, not yet verified by the Exam Office'}
-function tLookup(){
-  var c=($('emp')?$('emp').value:'').trim();emp=c;try{localStorage.setItem('envEmp',emp)}catch(e){}
-  if(!c){msg='Enter your employee code.';kind='err';render();return}
+function grab(){for(var k in S){var e=$('f_'+k);if(e)S[k]=e.value}}
+function say(m,k){msg=m;kind=k||'';render();window.scrollTo(0,0)}
+function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
+function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Saving...'}
+function setInfo(r){o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m=''}
+/* ---- employee identity (one login, remembered on this phone) ---- */
+function applyEmp(r){if(r.found){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office'}else{eState='new';eCan=r.canRegister===true}}
+function eLookup(){
+  grab();emp=S.emp.trim();try{localStorage.setItem('envEmp',emp)}catch(e){}
+  if(!emp){say('Enter your employee code.','err');return}
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';if(r.found){tState='found';tName=r.name;tNote=tSrc(r.source)}else{tState='new';tName='';tNote='';tCan=r.canRegister!==false}render()})
-  .withFailureHandler(function(e){busy=false;msg='Error: '+(e&&e.message?e.message:e);kind='err';render()}).teacherLookup(c,ID,KEY);
+  google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
 }
-function tRegister(){
-  var nm=($('tn')?$('tn').value:'').trim();
-  if(!nm){msg='Enter your full name.';kind='err';render();return}
+function eRegister(){
+  grab();if(!S.tn.trim()){say('Enter your full name.','err');return}
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){tState='found';tName=r.name;tNote=tSrc(r.source);msg='';kind=''}else{msg=r.msg;kind='err'}render()})
-  .withFailureHandler(function(e){busy=false;msg='Error: '+(e&&e.message?e.message:e);kind='err';render()}).teacherRegister(emp,nm,ID,KEY);
+  google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';msg='';kind=''}else{msg=r.msg;kind='err'}render()}).withFailureHandler(fail).teacherRegister(emp,S.tn.trim(),ID,KEY);
 }
-function tChange(){tState='';tName='';tNote='';render()}
-function teacherBox(){
+function eChange(){eState='';empName='';empNote='';res=null;render()}
+function idBox(inner){
   var h='<div class="box">';
-  if(tState==='found'){h+=row('Teacher',tName+' ('+emp+')')+(tNote?'<div class="hint">'+esc(tNote)+'</div>':'')+'<button id="go" onclick="act(\'check\')">Mark CHECKED</button><button class="lnk" onclick="tChange()">Not you? Change employee code</button>'}
-  else if(tState==='new'&&!tCan){h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. Please contact the Exam Office to have your code added.</div><button class="lnk" onclick="tChange()">Wrong code? Go back</button>'}
-  else if(tState==='new'){h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. Register yourself once:</div><label for="tn">Your full name</label><input id="tn" type="text" style="font-size:16px;padding:10px"><button id="go" onclick="tRegister()">Register and continue</button><button class="lnk" onclick="tChange()">Wrong code? Go back</button>'}
-  else{h+='<label for="emp">Teacher employee code (required)</label><input id="emp" type="text" autocomplete="off" autocapitalize="off" value="'+esc(emp)+'" oninput="saveEmp()" style="font-size:18px;padding:10px"><button id="go" onclick="tLookup()">Continue</button>'}
-  return h;
+  if(eState==='found')h+=row('Employee',empName+' ('+emp+')')+(empNote?'<div class="hint">'+esc(empNote)+'</div>':'')+inner+'<button class="lnk" onclick="eChange()">Not you? Change employee code</button>';
+  else if(eState==='new'&&!eCan)h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. '+(ID?'Please contact the Exam Office to have your code added.':'Scan any envelope QR once to register, or ask the Exam Office.')+'</div><button class="lnk" onclick="eChange()">Wrong code? Go back</button>';
+  else if(eState==='new')h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. Register yourself once:</div><label for="f_tn">Your full name</label><input id="f_tn" type="text" style="font-size:16px" value="'+esc(S.tn)+'"><button id="go" onclick="eRegister()">Register and continue</button><button class="lnk" onclick="eChange()">Wrong code? Go back</button>';
+  else h+='<label for="f_emp">Your employee code (required)</label><input id="f_emp" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.emp)+'"><button id="go" onclick="eLookup()">Continue</button>';
+  return h+'</div>';
 }
-function saveEmp(){emp=$('emp').value;try{localStorage.setItem('envEmp',emp)}catch(e){}}
-function saveWho(){who=$('who').value;try{localStorage.setItem('envWho',who)}catch(e){}}
-function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++){bs[i].disabled=b}var p=$('go');if(p&&b)p.textContent='Saving...'}
+/* ---- live checks ---- */
+function live(){
+  if(!o)return;grab();
+  var el=$('chk');
+  if(el){var n=S.n,a=S.a;if(n===''){el.className='chk';el.textContent=''}else{var t=Number(n)+(a===''?0:Number(a));
+    if(t===Number(o.seated)){el.className='chk good';el.textContent=n+' filled + '+(a||0)+' absent = '+t+'  (matches '+o.seated+' seated)'}
+    else{el.className='chk bad';el.textContent=n+' filled + '+(a||0)+' absent = '+t+', but '+o.seated+' seated. Will be flagged.'}}}
+  var e2=$('chk2');
+  if(e2){if(S.m===''){e2.className='chk';e2.textContent=''}else if(Number(S.m)===Number(o.sheets)){e2.className='chk good';e2.textContent=S.m+' marked = '+o.sheets+' filled books returned'}
+    else{e2.className='chk bad';e2.textContent=S.m+' marked, but '+o.sheets+' filled books were returned. Will be flagged.'}}
+}
+function countForm(btnText){
+  return '<label for="f_n">Filled answer books returned (used, not blank)</label><input id="f_n" type="number" inputmode="numeric" min="0" value="'+esc(S.n)+'" oninput="live()">'
+    +'<label for="f_a">Students absent</label><input id="f_a" type="number" inputmode="numeric" min="0" value="'+esc(S.a)+'" oninput="live()">'
+    +'<div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+btnText+'</button>';
+}
+function stageBox(){
+  var st=o.stage;
+  if(st==='done')return '<div class="box big">&#10003; All done. Award list received and verified by the Exam Office.</div>';
+  if(st==='verify'){
+    var w='';
+    if(Number(o.sheets)+(Number(o.absent)||0)!==Number(o.seated))w+='<div class="warn">Returned counts do not match: '+esc(o.sheets)+' filled + '+esc(o.absent)+' absent, but '+esc(o.seated)+' seated.</div>';
+    if(o.markedBooks!==''&&o.markedBooks!=null&&Number(o.markedBooks)!==Number(o.sheets))w+='<div class="warn">Marked books ('+esc(o.markedBooks)+') do not match filled books returned ('+esc(o.sheets)+').</div>';
+    return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. The teacher has marked this envelope, but it is NOT final until the award list is received.</div>'+w
+      +'<label for="f_st">Your employee code</label><input id="f_st" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.st)+'">'
+      +'<label for="f_pin">Your PIN</label><input id="f_pin" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.pin)+'">'
+      +'<button id="go" onclick="act(\'verify\')">Award list RECEIVED: VERIFY</button></div>';
+  }
+  if(showFix&&(st==='return'||st==='mark'))return idBox(countForm(o.returned?'Update counts':'Mark RETURNED')+'<button class="lnk" onclick="showFix=false;render()">Back</button>');
+  if(st==='receive')return idBox('<button id="go" onclick="act(\'receive\')">Mark RECEIVED</button><div class="hint">Tap when you take the envelope from the Exam Office.</div>');
+  if(st==='return')return idBox(countForm('Mark RETURNED'));
+  return idBox('<div class="hint" style="margin:0 0 4px">Filled books returned from the room: <b>'+esc(o.sheets)+'</b></div>'
+    +'<label for="f_m">Answer books MARKED</label><input id="f_m" type="number" inputmode="numeric" min="0" value="'+esc(S.m)+'" oninput="live()">'
+    +'<div id="chk2" class="chk"></div><button id="go" onclick="act(\'mark\')">Mark MARKED</button><button class="lnk" onclick="showFix=true;render()">Fix the returned counts</button>');
+}
+/* ---- screens ---- */
+function homeScreen(){
+  var s='<h1>Envelope Tracker</h1><div class="sub">Find an envelope without scanning its QR.</div><div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  var f='<label for="f_q">Room, course code, title, envelope ID (or paste the link)</label><input id="f_q" type="text" autocomplete="off" value="'+esc(S.q)+'">'
+    +'<label for="f_d">Exam date (optional)</label><input id="f_d" type="date" value="'+esc(S.d)+'"><button id="go" onclick="doSearch()">Search</button>';
+  if(res){f+=res.map(function(r){return '<a class="res" href="?e='+encodeURIComponent(r.id)+'&k='+encodeURIComponent(r.k)+'&a='+encodeURIComponent(A)+'"><b>'+esc(r.title)+'</b><span>'+esc(r.code)+' &middot; '+esc(r.program)+' Sem '+esc(r.sem)+'</span><span>Room '+esc(r.room)+' &middot; '+esc(r.date)+' &middot; '+esc(r.slot)+'</span><span><b style="font-size:12px">'+esc(r.status)+'</b></span></a>'}).join('')}
+  return s+idBox(f);
+}
+function doSearch(){
+  grab();var q=S.q.trim(),m=/[?&]e=([^&\s#]+)/.exec(q);
+  if(m){var k=/[?&]k=([^&\s#]+)/.exec(q);location.href='?e='+m[1]+(k?'&k='+k[1]:'')+'&a='+encodeURIComponent(A);return}
+  setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;res=r;msg=r.length?'':'No envelope matched.';kind=r.length?'':'err';render()}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
+}
 function render(){
-  var A=$('app');
-  if(o&&o.denied){A.innerHTML='<div class="box"><h1>QR link not valid</h1><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker.</p></div>';return}
-  if(!o||!o.found){A.innerHTML='<div class="box"><h1>Envelope not found</h1><div class="id">'+esc(ID)+'</div><p class="sub">This QR is not in the tracker. Run Envelopes > Sync again, or reprint the tag.</p></div>';return}
-  var st=o.stage,s='';
-  var order=['dispatch','return','check','approve'],labels=['Dispatched','Returned','Checked','Approved'],idx=st==='done'?4:order.indexOf(st);
+  grab();var Ap=$('app');
+  if(!A){Ap.innerHTML='<div class="box"><h1>Link incomplete</h1><p class="sub">Open this page from the QR on the envelope, or from the home link given by the Exam Office (it ends with ?a=...).</p></div>';return}
+  if(!ID){Ap.innerHTML=homeScreen();return}
+  if(o&&o.denied){Ap.innerHTML='<div class="box"><h1>QR link not valid</h1><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker, or <a href="?a='+esc(A)+'">search for the envelope</a>.</p></div>';return}
+  if(!o)return;
+  if(!o.found){Ap.innerHTML='<div class="box"><h1>Envelope not found</h1><div class="id">'+esc(ID)+'</div><p class="sub">This QR is not in the tracker. Ask the Exam Office to Sync again or reprint the tag.</p></div>';return}
+  var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Marked','Verified'],idx=st==='done'?4:order.indexOf(st),s='';
   s+='<h1>'+esc(o.title)+'</h1><div class="sub">'+esc(o.code)+' &middot; '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>';
-  s+='<div class="steps">';for(var i=0;i<4;i++){s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'&#10003; ':'')+labels[i]+'</div>'}s+='</div>';
+  s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'&#10003; ':'')+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
-    +row('Dispatched',o.dispatched||'-')+row('Returned',o.returned||'-')+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))+row('Checked (teacher)',o.checked||'-')+(o.empCode?row('Teacher employee code',o.empCode):'')+row('Award list received (Exam Office)',o.award||'-')+'</div>';
-  if(st==='done'){s+='<div class="box big">&#10003; All done. Award list received and approved by the Exam Office.</div>'}
-  else{
-    if(!(st==='check'&&!showFix))s+='<div class="box"><label for="who">Your name (required, saved on this phone)</label><input id="who" type="text" value="'+esc(who)+'" placeholder="e.g. Ali" oninput="saveWho()" style="font-size:16px;padding:10px"></div>';
-    if(st==='dispatch'&&!showFix){
-      s+='<div class="box"><button id="go" onclick="act(\'dispatch\')">Mark DISPATCHED</button><div class="hint">Tap when the envelope leaves for the room.</div>'
-        +'<button class="lnk" onclick="showFix=true;render()">Already in room? Record the return instead</button></div>';
-    }else if(st==='approve'){
-      s+='<div class="box"><div class="hint" style="margin:0 0 6px">The teacher has checked this envelope, but it is NOT final until the Exam Office has received the award list.</div>'
-        +'<label for="pin">Exam Office PIN</label><input id="pin" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" style="font-size:18px;padding:10px">'
-        +'<button id="go" onclick="act(\'approve\')">Award list RECEIVED: APPROVE</button></div>';
-    }else if(st==='check'&&!showFix){
-      s+=teacherBox()
-        +'<button class="lnk" onclick="showFix=true;render()">Fix the counts</button></div>';
-    }else{
-      if(dn===''&&o.sheets!=='')dn=String(o.sheets);if(o.absent!==''&&da==='0')da=String(o.absent);
-      s+='<div class="box"><label for="n">Filled answer books returned (used, not blank)</label><input id="n" type="number" inputmode="numeric" min="0" value="'+esc(dn)+'" oninput="liveCheck()">'
-        +'<label for="a">Students absent</label><input id="a" type="number" inputmode="numeric" min="0" value="'+esc(da)+'" oninput="liveCheck()">'
-        +'<div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+(o.returned?'Update counts':'Mark RETURNED')+'</button>'
-        +(showFix?'<button class="lnk" onclick="showFix=false;render()">Back</button>':'')+'</div>';
-    }
-  }
-  A.innerHTML=s;liveCheck();
+    +row('Received',o.received||'-')+row('Returned',o.returned||'-')+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
+    +row('Marked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books':''))+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
+  s+=stageBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
+  Ap.innerHTML=s;live();
 }
 function act(a){
-  if(busy)return;
-  if(a!=='check'&&!String(who).replace(/ /g,'')){msg='Please enter your name first.';kind='err';render();window.scrollTo(0,0);if($('who'))$('who').focus();return}
-  var n=$('n')?$('n').value:'',ab=$('a')?$('a').value:'',pin=$('pin')?$('pin').value:'',ec=emp;
-  if(a==='return'&&(n===''||isNaN(Number(n))||Number(n)<0)){msg='Enter the number of FILLED answer books returned (0 or more).';kind='err';render();window.scrollTo(0,0);if($('n'))$('n').focus();return}
-  if(a==='approve'&&!String(pin).replace(/ /g,'')){msg='Enter the Exam Office PIN.';kind='err';render();window.scrollTo(0,0);if($('pin'))$('pin').focus();return}
-  if(a==='check'&&tState!=='found'){msg='Enter your employee code and tap Continue first.';kind='err';render();window.scrollTo(0,0);return}
+  if(busy)return;grab();
+  var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,staff:S.st.trim(),pin:S.pin};
+  function bad(x){return x===''||isNaN(Number(x))||Number(x)<0}
+  if(a!=='verify'&&eState!=='found'){say('Enter your employee code and tap Continue first.','err');return}
+  if(a==='return'&&bad(S.n)){say('Enter the number of FILLED answer books returned (0 or more).','err');return}
+  if(a==='return'&&S.a!==''&&bad(S.a)){say('Students absent must be 0 or more.','err');return}
+  if(a==='mark'&&bad(S.m)){say('Enter how many answer books were MARKED (0 or more).','err');return}
+  if(a==='mark'&&Number(S.m)!==Number(o.sheets)&&!confirm('You entered '+S.m+' marked, but '+o.sheets+' filled books were returned. This will be flagged. Continue?'))return;
+  if(a==='verify'&&(!p.staff||!p.pin.trim())){say('Enter your employee code and PIN.','err');return}
+  if(a==='verify'&&!confirm('Verify this envelope? The award list has been received and this is final.'))return;
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){
-    busy=false;msg=r.msg;kind=r.ok?'ok':'err';if(r.info){o=r.info;if(r.ok){showFix=false}}
+    busy=false;msg=r.msg;kind=r.ok?'ok':'err';if(a==='verify')S.pin='';
+    if(r.info){setInfo(r.info);if(r.ok)showFix=false}
     render();window.scrollTo(0,0);
-  }).withFailureHandler(function(e){busy=false;msg='Error: '+(e&&e.message?e.message:e);kind='err';render();window.scrollTo(0,0)}).envelopeScanAction(ID,a,n,ab,who,pin,ec,KEY);
+  }).withFailureHandler(fail).envelopeScanAction(ID,a,p,KEY);
 }
-if(o){render()}else{google.script.run.withSuccessHandler(function(r){o=r;render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h1>Error</h1><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
+if(emp&&A){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
+if(ID&&A){google.script.run.withSuccessHandler(function(r){setInfo(r);render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h1>Error</h1><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
+else render();
 </script></body></html>
