@@ -52,13 +52,13 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 <script>
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||'';
 var $=function(x){return document.getElementById(x)};
-var o=null,busy=false,showFix=false,msg='',kind='',res=null,filt='all',searched=false;
+var note='',o=null,busy=false,showFix=false,msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
 var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:''};
 try{emp=localStorage.getItem('envEmp')||''}catch(e){}
 S.emp=emp;
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
-S.d=today();
+S.d='';
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function row(a,b){return '<div class="row"><span>'+esc(a)+'</span><b>'+esc(b)+'</b></div>'}
 function grab(){for(var k in S){var e=$('f_'+k);if(e)S[k]=e.value}}
@@ -139,10 +139,10 @@ function cardHtml(r){
 }
 function resultsHtml(){
   if(!searched)return '';
-  if(!res||!res.length)return '<div class="empty">No envelope matched. Try fewer words, or clear the date.</div>';
+  if(!res||!res.length)return '<div class="empty">No envelope matched'+(S.d?' on this date. Tap "Any date" to search all dates.':'. Try fewer words.')+'</div>';
   var cnt={all:res.length,todo:0,room:0,ret:0,chk:0,done:0};
   res.forEach(function(r){cnt[grp(r.status)]++});
-  var h='<div class="chips">',keys=['all','todo','room','ret','chk','done'];
+  var h=note?'<div class="hint">'+esc(note)+'</div>':'';h+='<div class="chips">',keys=['all','todo','room','ret','chk','done'];
   keys.forEach(function(k){if(k!=='all'&&!cnt[k])return;h+='<button class="chip'+(filt===k?' on':'')+'" onclick="setFilt(\''+k+'\')">'+(k==='all'?'All':GL[k])+' '+cnt[k]+'</button>'});
   h+='</div>';
   var list=res.filter(function(r){return filt==='all'||grp(r.status)===filt});
@@ -154,17 +154,17 @@ function setFilt(k){grab();filt=k;render()}
 function homeScreen(){
   var s='<h2>Find an envelope</h2><div class="sub">No QR needed. Search by room, course code, course title, teacher or invigilator name.</div><div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   var f='<label for="f_q">Search</label><input id="f_q" type="search" autocomplete="off" placeholder="Room, course code, title, name" value="'+esc(S.q)+'">'
-    +'<label for="f_d">Exam date</label><input id="f_d" type="date" value="'+esc(S.d)+'">'
+    +'<label for="f_d">Exam date (optional)</label><input id="f_d" type="date" value="'+esc(S.d)+'">'
     +'<button id="go" onclick="doSearch()">Search</button>'
     +'<div class="two"><button class="lnk" onclick="quick(today())">Today\'s envelopes</button><button class="lnk" onclick="quick(\'\')">Any date</button></div>';
   return s+idBox(f)+(eState==='found'?resultsHtml():'');
 }
-function quick(d){var q=$('f_q'),e=$('f_d');if(q)q.value='';if(e)e.value=d;if(d)doSearch();else{grab();render()}}
+function quick(d){var q=$('f_q'),e=$('f_d');if(q)q.value='';if(e)e.value=d;doSearch()}
 function doSearch(auto){
   if(!auto)grab();var q=S.q.trim(),m=/[?&]e=([^&\s#]+)/.exec(q);
   if(m){var k=/[?&]k=([^&\s#]+)/.exec(q);location.href='?e='+m[1]+(k?'&k='+k[1]:'')+'&a='+encodeURIComponent(A);return}
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;res=r;searched=true;filt='all';msg='';kind='';render()}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
+  google.script.run.withSuccessHandler(function(r){busy=false;res=r;searched=true;filt='all';msg='';kind='';note=(!q&&!S.d&&r.length)?'Showing the next exam date: '+r[0].date+'. Type a word or pick a date to search elsewhere.':'';render()}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
 }
 /* ---- envelope screen ---- */
 function render(){
