@@ -57,7 +57,7 @@ var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
 var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:''};
-try{emp=localStorage.getItem('envEmp')||''}catch(e){}
+try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
 S.emp=emp;
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
 S.d='';
@@ -79,7 +79,7 @@ function isBad(s){return s==='CHECK COUNT'||/MISMATCH/.test(String(s||''))}
 /* ---- employee identity (one login, remembered on this phone) ---- */
 function applyEmp(r){if(r.found){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office'}else{eState='new';eCan=r.canRegister===true}}
 function eLookup(){
-  grab();emp=S.emp.trim();try{localStorage.setItem('envEmp',emp)}catch(e){}
+  grab();emp=S.emp.trim();try{sessionStorage.setItem('envEmp',emp)}catch(e){}
   if(!emp){say('Enter your employee code.','err');return}
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
@@ -89,7 +89,7 @@ function eRegister(){
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';msg='';kind=''}else{msg=r.msg;kind='err'}render()}).withFailureHandler(fail).teacherRegister(emp,S.tn.trim(),ID,KEY);
 }
-function eChange(){eState='';empName='';empNote='';res=null;searched=false;render()}
+function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';try{sessionStorage.removeItem('envEmp')}catch(e){}render()}
 function idBox(inner){
   var h='<div class="box">';
   if(eState==='found')h+=row('Employee',empName+' ('+emp+')')+(empNote?'<div class="hint">'+esc(empNote)+'</div>':'')+inner+'<button class="lnk" onclick="eChange()">Not you? Change employee code</button>';
