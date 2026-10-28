@@ -82,7 +82,7 @@ function eLookup(){
   grab();emp=S.emp.trim();try{localStorage.setItem('envEmp',emp)}catch(e){}
   if(!emp){say('Enter your employee code.','err');return}
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render();if(eState==='found'&&!ID)doSearch(true)}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
+  google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
 }
 function eRegister(){
   grab();if(!S.tn.trim()){say('Enter your full name.','err');return}
@@ -214,7 +214,7 @@ function act(a){
   })();
 }
 /* ---- start ---- */
-if(emp&&A){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found&&!ID){render();doSearch(true)}else if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
+if(emp&&A){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
 if(ID&&A){google.script.run.withSuccessHandler(function(r){setInfo(r);render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h2>Error</h2><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
 else render();
 </script></body></html>
