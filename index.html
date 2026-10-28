@@ -148,11 +148,19 @@ function act(a){
   if(a==='verify'&&(!p.staff||!p.pin.trim())){say('Enter your employee code and PIN.','err');return}
   if(a==='verify'&&!confirm('Verify this envelope? The award list has been received and this is final.'))return;
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){
-    busy=false;msg=r.msg;kind=r.ok?'ok':'err';if(a==='verify')S.pin='';
-    if(r.info){setInfo(r.info);if(r.ok)showFix=false}
-    render();window.scrollTo(0,0);
-  }).withFailureHandler(fail).envelopeScanAction(ID,a,p,KEY);
+  var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      /* server busy: try again by itself (up to 4 times); the server ignores a step that was already saved */
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;var g=$('go');if(g)g.textContent='Server busy, retrying...';setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';if(a==='verify')S.pin='';
+      if(r.info){setInfo(r.info);if(r.ok)showFix=false}
+      render();window.scrollTo(0,0);
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;var g=$('go');if(g)g.textContent='Connection weak, retrying...';setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeScanAction(ID,a,p,KEY);
+  })();
 }
 if(emp&&A){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
 if(ID&&A){google.script.run.withSuccessHandler(function(r){setInfo(r);render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h1>Error</h1><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
