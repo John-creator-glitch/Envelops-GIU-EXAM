@@ -58,6 +58,7 @@ select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #9aa
 @keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media(max-width:480px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}}
+.dr{flex:1;min-width:0;display:block;background:#fff;border:1px solid var(--ln);border-left:6px solid #e0a800;border-radius:12px;padding:10px 12px;margin:8px 0;box-shadow:var(--sh)}.dr.bad{border-left-color:#b3261e}.dr b{display:block;font-size:15px;line-height:1.3}.dr span{display:block;font-size:12.5px;color:var(--mu);margin-top:2px}
 .empty{text-align:center;color:var(--mu);font-size:14px;padding:22px 8px}
 </style></head><body>
 <div class="top"><h1>Envelope Tracker</h1><div class="s">Exam Office</div></div>
@@ -93,9 +94,9 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
-var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false,stale=false;
+var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
-var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',ds:'',dp:''};
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ds:'',dp:''};
 /* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
 var FS=Q.get('s')==='1',rem=true;
 try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
@@ -338,6 +339,91 @@ function dashHtml(){
   if(!dash.slots.length)h+='<div class="empty">No envelopes on this date.</div>';
   return h+'</div>';
 }
+/* ---- Exam Office Receiving Desk (?x=1): log in once, receive everything that was returned in one go ---- */
+var desk=null,xC='',xP='',dsel={},dfil='',deskT=null,deskIdle=null;
+function deskTouch(){clearTimeout(deskIdle);deskIdle=setTimeout(function(){deskOut('Logged out after 10 minutes without use.')},600000)}
+function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;xC='';xP='';dsel={};S.xp='';msg=m||'';kind=m?'err':'';render()}
+function deskLogin(){
+  if(busy)return;grab();
+  if(!S.xs.trim()||!S.xp.trim()){msg='Enter your Exam Office employee code and PIN.';kind='err';render();return}
+  xC=S.xs.trim();xP=S.xp;S.xp='';loadDesk(false,true);
+}
+function loadDesk(quiet,first){
+  if(quiet&&busy)return;if(!quiet)setBusy(true);
+  google.script.run.withSuccessHandler(function(r){
+    if(!quiet){busy=false;deskTouch()}
+    desk=r;
+    if(first){msg='';kind='';dsel={};r.items.forEach(function(x){if(!x.mis)dsel[x.id]=1})}   /* clean ones are ticked; envelopes with a count problem are left for a human look */
+    else Object.keys(dsel).forEach(function(id){if(!r.items.some(function(x){return x.id===id}))delete dsel[id]});
+    if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},20000);
+    render();
+  }).withFailureHandler(function(e){
+    if(quiet)return;busy=false;if(!desk){xC='';xP=''}
+    msg='Error: '+((e&&e.message)||e);kind='err';render();
+  }).envelopeDeskList(xC,xP);
+}
+function vis(){var o=[];(desk?desk.items:[]).forEach(function(x,i){if(!dfil||(x.dk+'|'+x.slot)===dfil)o.push(i)});return o}
+function setDfil(v){grab();dfil=v;deskTouch();render()}
+function dtg(i,c){var x=desk.items[i];if(c)dsel[x.id]=1;else delete dsel[x.id];deskTouch();var n=Object.keys(dsel).length;var b=$('dbtn');if(b)b.textContent='Envelope received: OK ('+n+')';updBar()}
+function dAll(){grab();vis().forEach(function(i){var x=desk.items[i];if(!x.mis)dsel[x.id]=1});deskTouch();render()}
+function dNone(){grab();dsel={};deskTouch();render()}
+function deskScreen(){
+  var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!desk)return h+'<h2>Receiving Desk</h2><div class="sub">Exam Office receiver only. Log in once, then receive all returned envelopes in one go.</div><div class="box"><label for="f_xs" style="margin-top:0">Your employee code</label><input id="f_xs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.xs||'')+'">'
+    +'<label for="f_xp">Your PIN</label><input id="f_xp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go" onclick="deskLogin()">Open receiving desk</button></div>';
+  var seen={},opts='<option value="">All dates and slots ('+desk.items.length+')</option>';
+  desk.items.forEach(function(x){var k=x.dk+'|'+x.slot;if(seen[k])return;seen[k]=1;var n=0;desk.items.forEach(function(y){if(y.dk+'|'+y.slot===k)n++});opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(x.date+' - '+x.slot)+' ('+n+')</option>'});
+  var v=vis();
+  h+='<h2>Receiving Desk</h2><div class="sub">Logged in as '+esc(xC)+' &middot; updated '+esc(desk.at)+' &middot; refreshes every 20 s</div>';
+  h+='<div class="box"><b>'+desk.items.length+' envelope'+(desk.items.length===1?'':'s')+' waiting for your OK</b><div class="hint" style="margin:2px 0 0">Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.</div>'
+    +'<label for="f_xf">Show</label><select id="f_xf" onchange="setDfil(this.value)">'+opts+'</select>'
+    +'<div class="two"><button class="lnk" onclick="dAll()">Select all (no problem)</button><button class="lnk" onclick="dNone()">Clear selection</button></div></div>';
+  if(!v.length)h+='<div class="empty">'+(desk.items.length?'Nothing waiting in this slot.':'Nothing is waiting. New returns appear here by themselves.')+'</div>';
+  v.forEach(function(i){var x=desk.items[i];
+    h+='<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(dsel[x.id]?'checked ':'')+'onchange="dtg('+i+',this.checked)"><label class="dr'+(x.mis?' bad':'')+'"><b>'+esc(x.title)+'</b>'
+      +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
+      +'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
+      +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':'')+'</label></div>'});
+  return h+'<button class="lnk" onclick="deskOut()">Log out</button>';
+}
+function deskDecide(dc){
+  if(busy)return;
+  var ids=Object.keys(dsel);if(!ids.length){say('Tick at least one envelope.','err');return}
+  if(!confirm(dc==='ok'?'Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?':'Send '+ids.length+' envelope(s) back to the invigilators?'))return;
+  deskTouch();setBusy(true);
+  var items={};desk.items.forEach(function(x){items[x.id]=x});
+  var done=0,fails=[],stop=false,seen=0;
+  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
+  function one(id,cb){
+    if(stop){cb();return}
+    var x=items[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete dsel[id]}
+        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+        seen++;prog();cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
+      }).envelopeDecideReturn(id,x.k,xC,xP,dc);
+    })();
+  }
+  function finish(){
+    busy=false;SC={};
+    msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':(dc==='ok'?'Received OK: ':'Sent back: ')+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
+    kind=(stop||fails.length)?'err':'ok';
+    if(stop){desk=null;xP='';xC='';deskOut(msg);return}
+    window.scrollTo(0,0);loadDesk(false);   /* fresh list from the server */
+  }
+  prog();
+  /* the first envelope alone proves the PIN; only then the rest run 3 at a time */
+  pool(ids.slice(0,1),1,one,function(){},function(){
+    if(stop||ids.length<2){finish();return}
+    pool(ids.slice(1),3,one,function(){},finish);
+  });
+}
 /* ---- opening / leaving an envelope WITHOUT reloading the page (fast; search results stay in memory) ---- */
 function enc(x){return encodeURIComponent(x)}
 function openEnv(i){
@@ -378,6 +464,9 @@ function cardHtml(r,i){
 }
 function updBar(){
   var b=$('bb');if(!b)return;
+  if(DESK&&!ID){var dn=Object.keys(dsel).length,on=!!(desk&&dn>0);if(!on){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
+    b.style.display='block';document.body.style.paddingBottom='120px';
+    if(!busy)b.innerHTML='<div class="bbi"><button id="dbtn" onclick="deskDecide(\'ok\')">Envelope received: OK ('+dn+')</button><button class="lnk" style="padding:6px" onclick="deskDecide(\'back\')">Send back selected ('+dn+')</button></div>';return}
   var n=Object.keys(sel).length,show=!ID&&!DM&&eState==='found'&&searched&&res&&res.length&&n>0&&(filt==='all'||filt==='todo');
   if(!show){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
   b.style.display='block';document.body.style.paddingBottom='84px';
@@ -494,6 +583,7 @@ function doSearch(auto,force){
 function render(){
   grab();var Ap=$('app');
   if(!A){Ap.innerHTML='<div class="box"><h2>Link incomplete</h2><p class="sub">Open this page from the QR on the envelope, or from the home link given by the Exam Office (it ends with ?a=...).</p></div>';return}
+  if(!ID&&DESK){Ap.innerHTML=deskScreen();return}
   if(!ID&&DM){Ap.innerHTML=dashScreen();return}
   if(!ID){Ap.innerHTML=homeScreen();return}
   if(o&&o.denied){Ap.innerHTML='<div class="box"><h2>QR link not valid</h2><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker, or <a href="?a='+esc(A)+'" onclick="goHome();return false">search for the envelope</a>.</p></div>';return}
@@ -550,8 +640,8 @@ function act(a){
 function restoreSearch(){try{var sv=JSON.parse(sessionStorage.getItem('envQ')||'null');if(sv){S.q=sv.q||'';S.d=sv.d||'';render();doSearch(true)}}catch(e2){}}
 (function(){
   var ec=null;try{ec=JSON.parse(sessionStorage.getItem('envEmpI')||'null')}catch(e){}
-  var known=!!(emp&&A&&!DM&&ec&&ec.emp===emp);
-  if(emp&&A&&!DM){
+  var known=!!(emp&&A&&!DM&&!DESK&&ec&&ec.emp===emp);
+  if(emp&&A&&!DM&&!DESK){
     if(known){
       /* this tab already knows who you are: no waiting for the server */
       applyEmp({found:true,name:ec.name,source:ec.source});
