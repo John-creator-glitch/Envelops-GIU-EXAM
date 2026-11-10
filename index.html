@@ -76,7 +76,9 @@ var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
 var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',ds:'',dp:''};
-try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
+/* FS = this envelope page was opened from the manual search. Then nobody's code is remembered: each person types their own. A QR scan (no s=1) behaves as before. */
+var FS=Q.get('s')==='1',rem=!FS;
+try{localStorage.removeItem('envEmp');emp=FS?'':(sessionStorage.getItem('envEmp')||'')}catch(e){}
 S.emp=emp;
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
 S.d='';
@@ -99,7 +101,7 @@ function isBad(s){return s==='CHECK COUNT'||/MISMATCH/.test(String(s||''))}
 /* ---- employee identity (one login, remembered on this phone) ---- */
 function applyEmp(r){if(r.found){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office'}else{eState='new';eCan=r.canRegister===true}}
 function eLookup(){
-  grab();emp=S.emp.trim();try{sessionStorage.setItem('envEmp',emp)}catch(e){}
+  grab();emp=S.emp.trim();try{if(!FS)sessionStorage.setItem('envEmp',emp)}catch(e){}
   if(!emp){say('Enter your employee code.','err');return}
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
@@ -109,7 +111,7 @@ function eRegister(){
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';msg='';kind=''}else{msg=r.msg;kind='err'}render()}).withFailureHandler(fail).teacherRegister(emp,S.tn.trim(),ID,KEY);
 }
-function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';try{sessionStorage.removeItem('envEmp')}catch(e){}render()}
+function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';try{if(!FS)sessionStorage.removeItem('envEmp')}catch(e){}render()}
 function idBox(inner){
   var h='<div class="box">';
   if(eState==='found')h+=row('Employee',empName+' ('+emp+')')+(empNote?'<div class="hint">'+esc(empNote)+'</div>':'')+inner+'<button class="lnk" onclick="eChange()">Not you? Change employee code</button>';
@@ -306,7 +308,7 @@ function dashHtml(){
 /* ---- home page: find an envelope without its QR ---- */
 function cardHtml(r){
   var g=isBad(r.status)?'bad':grp(r.status);
-  return '<a class="res g-'+g+'" href="?e='+encodeURIComponent(r.id)+'&k='+encodeURIComponent(r.k)+'&a='+encodeURIComponent(A)+'"><b>'+esc(r.title)+'</b>'
+  return '<a class="res g-'+g+'" onclick="location.replace(this.href);return false" href="?e='+encodeURIComponent(r.id)+'&k='+encodeURIComponent(r.k)+'&a='+encodeURIComponent(A)+'&s=1"><b>'+esc(r.title)+'</b>'
     +'<span>'+esc(r.code)+', '+esc(r.program)+' Sem '+esc(r.sem)+'</span><span>Room '+esc(r.room)+', '+esc(r.date)+', '+esc(r.slot)+'</span><i>'+esc(r.status)+'</i></a>';
 }
 function resultsHtml(){
@@ -336,7 +338,7 @@ function doSearch(auto){
   if(!auto)grab();var q=S.q.trim(),m=/[?&]e=([^&\s#]+)/.exec(q);
   if(m){var k=/[?&]k=([^&\s#]+)/.exec(q);location.href='?e='+m[1]+(k?'&k='+k[1]:'')+'&a='+encodeURIComponent(A);return}
   setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;res=r;searched=true;filt='all';msg='';kind='';note=(!q&&!S.d&&r.length)?'Showing the next exam date: '+r[0].date+'. Type a word or pick a date to search elsewhere.':'';render()}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
+  google.script.run.withSuccessHandler(function(r){busy=false;res=r;searched=true;filt='all';msg='';kind='';try{sessionStorage.setItem('envQ',JSON.stringify({q:S.q,d:S.d}))}catch(e3){}note=(!q&&!S.d&&r.length)?'Showing the next exam date: '+r[0].date+'. Type a word or pick a date to search elsewhere.':'';render()}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
 }
 /* ---- envelope screen ---- */
 function render(){
@@ -348,16 +350,21 @@ function render(){
   if(!o)return;
   if(!o.found){Ap.innerHTML='<div class="box"><h2>Envelope not found</h2><div class="id">'+esc(ID)+'</div><p class="sub">This QR is not in the tracker. Ask the Exam Office to Sync again or reprint the tag. Or <a href="?a='+esc(A)+'">search for the envelope</a>.</p></div>';return}
   var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Checked','Verified'],idx=st==='done'?4:st==='accept'?1:order.indexOf(st),s='';
-  s+='<a class="lk" style="text-align:left;padding:12px 0 0" href="?a='+esc(A)+'">Back to search</a>';
+  s+='<a class="lk" style="text-align:left;padding:12px 0 0" onclick="location.replace(this.href);return false" href="?a='+esc(A)+'">Back to search</a>';
   s+='<h2 style="margin-top:4px">'+esc(o.title)+'</h2><div class="sub">'+esc(o.code)+', '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>';
   s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'&#10003; ':'')+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books':''))+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
-  s+=stageBox()+undoBox()+seatBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
+  s+=stageBox()+undoBox()+seatBox()+'<a class="lk" onclick="location.replace(this.href);return false" href="?a='+esc(A)+'">Search another envelope</a>';
   Ap.innerHTML=s;live();
 }
+/* after every screen: Enter submits the code, and the code box is ready to type in */
+(function(){var _r=render;render=function(){_r();
+  var e=$('f_emp');if(e){e.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eLookup()}};if(!e.value){try{e.focus()}catch(x){}}}
+  var t=$('f_tn');if(t)t.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eRegister()}};
+}})();
 function act(a){
   if(busy)return;grab();
   var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,staff:S.st.trim(),pin:S.pin};
@@ -377,6 +384,7 @@ function act(a){
       /* server busy: try again by itself (up to 4 times); the server ignores a step that was already saved */
       if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;var g=$('go');if(g)g.textContent='Server busy, retrying...';setTimeout(send,1500+tries*1000);return}
       busy=false;msg=r.msg;kind=r.ok?'ok':'err';if(a==='verify')S.pin='';
+      if(r.ok&&!rem&&a!=='verify'){eState='';empName='';empNote='';emp='';S.emp=''}   /* next person types their own code */
       if(r.info){setInfo(r.info);if(r.ok)showFix=false}
       render();window.scrollTo(0,0);
     }).withFailureHandler(function(e){
@@ -386,7 +394,8 @@ function act(a){
   })();
 }
 /* ---- start ---- */
-if(emp&&A&&!DM){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
+if(emp&&A&&!DM){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render();
+  if(r.found&&!ID){try{var sv=JSON.parse(sessionStorage.getItem('envQ')||'null');if(sv){S.q=sv.q||'';S.d=sv.d||'';render();doSearch(true)}}catch(e2){}}}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
 if(ID&&A){google.script.run.withSuccessHandler(function(r){setInfo(r);render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h2>Error</h2><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
 else render();
 </script></body></html>
