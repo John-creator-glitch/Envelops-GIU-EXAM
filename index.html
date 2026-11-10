@@ -29,6 +29,24 @@ a.res b{display:block;font-size:15px;line-height:1.3}a.res span{font-size:12.5px
 a.res i{display:inline-block;font-style:normal;font-size:12px;font-weight:700;margin-top:6px;padding:3px 9px;border-radius:99px;background:#eceff1;color:#546e7a}
 .g-todo{border-left-color:#9aa8a1}.g-room{border-left-color:#e0a800}.g-ret{border-left-color:#3d9a54}.g-chk{border-left-color:#3b78c4}.g-done{border-left-color:#0b5d3b}.g-bad{border-left-color:#b3261e}
 .g-room i{background:#fff2cc;color:#7a5b00}.g-ret i{background:#d9ead3;color:#1b5e20}.g-chk i{background:#cfe2f3;color:#1c4587}.g-done i{background:#b7e1cd;color:#0b5d3b}.g-bad i{background:#f4c7c3;color:#b3261e}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}.tabs button{margin:0;font-size:15px;padding:11px;background:#fff;color:var(--g);border:2px solid var(--g)}.tabs button.on{background:var(--g);color:#fff}
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#e3e8e5;margin:8px 0 6px}.bar i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--mu)}.leg b{color:var(--tx)}.leg u{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;text-decoration:none}
+select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #9aa8a1;border-radius:8px;background:#fff}
+.dm .c{max-width:1040px}.dm .top{padding:18px 20px 14px}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:linear-gradient(135deg,#0e3b2e,#165a45);color:#fff;border-radius:16px;padding:18px;margin:12px 0}
+.hero .t{font-size:13px;opacity:.8;letter-spacing:.04em;text-transform:uppercase}.hero .v{font-size:30px;font-weight:700;line-height:1.1;margin:2px 0}.hero .d{font-size:13px;opacity:.85}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.kpi{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:13px 14px;border-top:4px solid #9aa8a1}
+.kpi .k{font-size:11.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;font-weight:600}.kpi .n{font-size:27px;font-weight:700;line-height:1.15;margin-top:3px}.kpi .s{font-size:12px;color:var(--mu);margin-top:2px}
+.kpi.good{border-top-color:#0b5d3b}.kpi.warn2{border-top-color:#e0a800}.kpi.bad{border-top-color:#b3261e}.kpi.info{border-top-color:#3b78c4}
+.sec{font-size:13px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em;margin:20px 2px 6px}
+.two2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.fun{display:grid;grid-template-columns:92px 1fr 46px;gap:8px;align-items:center;font-size:13px;margin:7px 0}.fun .tr{height:12px;background:#e3e8e5;border-radius:6px;overflow:hidden}.fun .tr i{display:block;height:100%;border-radius:6px}.fun b{text-align:right}
+.dt{display:grid;grid-template-columns:86px 1fr 62px;gap:8px;align-items:center;font-size:13px;padding:6px 6px;border-radius:8px;cursor:pointer}.dt.on{background:var(--g2);font-weight:600}.dt .tr{height:10px;background:#e3e8e5;border-radius:5px;overflow:hidden}.dt .tr i{display:block;height:100%;background:#0b5d3b}.dt span:last-child{text-align:right;color:var(--mu);font-size:12px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px}.p-ok{background:#b7e1cd;color:#0b5d3b}.p-go{background:#cfe2f3;color:#1c4587}.p-at{background:#f4c7c3;color:#b3261e}.p-no{background:#eceff1;color:#546e7a}
+.sh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+@media(max-width:480px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}}
 .empty{text-align:center;color:var(--mu);font-size:14px;padding:22px 8px}
 </style></head><body>
 <div class="top"><h1>Envelope Tracker</h1><div class="s">Exam Office</div></div>
@@ -52,11 +70,12 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 })();
 </script>
 <script>
+if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
-var note='',o=null,busy=false,showFix=false,msg='',kind='',res=null,filt='all',searched=false;
+var note='',o=null,busy=false,showFix=false,showSeat=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
-var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:''};
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',ds:'',dp:''};
 try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
 S.emp=emp;
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
@@ -133,6 +152,100 @@ function stageBox(){
     +'<label for="f_m">Answer books CHECKED by the teacher</label><input id="f_m" type="number" inputmode="numeric" min="0" value="'+esc(S.m)+'" oninput="live()">'
     +'<div id="chk2" class="chk"></div><button id="go" onclick="act(\'mark\')">Mark papers checked</button><button class="lnk" onclick="showFix=true;render()">Fix the returned counts</button>');
 }
+/* ---- change student strength (Exam Office only: employee code + PIN) ---- */
+function seatBox(){
+  if(!o||o.stage==='done')return '';
+  if(!showSeat)return '<button class="lnk" onclick="grab();showSeat=true;S.sn=String(o.seated);render()">Student strength is wrong? Change it (Exam Office)</button>';
+  return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. Current strength: <b>'+esc(o.seated)+'</b>. The new number is used for all checks and stays after the next Sync.</div>'
+    +'<label for="f_sn">New number of students (seated)</label><input id="f_sn" type="number" inputmode="numeric" min="0" value="'+esc(S.sn)+'">'
+    +'<label for="f_ss">Your employee code</label><input id="f_ss" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ss)+'">'
+    +'<label for="f_sp">Your PIN</label><input id="f_sp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.sp)+'">'
+    +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
+}
+function setSeat(){
+  if(busy)return;grab();
+  var n=S.sn.trim();
+  if(n===''||isNaN(Number(n))||Number(n)<0||Math.floor(Number(n))!==Number(n)){say('Enter the number of students as a whole number (0 or more).','err');return}
+  if(!S.ss.trim()||!S.sp.trim()){say('Enter your employee code and PIN.','err');return}
+  if(!confirm('Change strength from '+o.seated+' to '+n+'?'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.sp='';
+      if(r.info)o=r.info;   /* keep what was typed in the other boxes */
+      if(r.ok)showSeat=false;
+      render();window.scrollTo(0,0);
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeSetSeated(ID,KEY,n,S.ss.trim(),S.sp);
+  })();
+}
+/* ---- dashboard: progress by date and slot ---- */
+var DC={done:'#0b5d3b',chk:'#3b78c4',ret:'#3d9a54',room:'#e0a800',todo:'#9aa8a1'},DK=['done','chk','ret','room','todo'];
+function barHtml(o){
+  var t=o.total||1,b='<div class="bar" role="img" aria-label="'+o.done+' verified of '+o.total+'">';
+  DK.forEach(function(k){if(o[k])b+='<i style="width:'+(o[k]*100/t)+'%;background:'+DC[k]+'"></i>'});
+  b+='</div><div class="leg">';
+  DK.forEach(function(k){b+='<span><u style="background:'+DC[k]+'"></u>'+GL[k]+' <b>'+o[k]+'</b></span>'});
+  return b+'</div>'+(o.bad?'<div class="warn">'+o.bad+' with a count problem (CHECK COUNT / MISMATCH)</div>':'');
+}
+function loadDash(d,quiet){
+  if(busy&&!quiet)return;if(!quiet)setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;dash=r;msg='';kind='';
+      if(!dashT)dashT=setInterval(function(){if(dash&&!busy&&!document.hidden)loadDash('',true)},30000);render()})
+    .withFailureHandler(function(e){if(quiet)return;busy=false;if(!dash){dsC='';dpP=''}msg='Error: '+((e&&e.message)||e);kind='err';render()}).envelopeDashboard(dsC,dpP,d||(dash&&dash.date)||'');
+}
+function dashLogin(){
+  if(busy)return;grab();
+  if(!S.ds.trim()||!S.dp.trim()){msg='Enter your employee code and PIN.';kind='err';render();return}
+  dsC=S.ds.trim();dpP=S.dp;S.dp='';loadDash('');
+}
+function dashOut(){clearInterval(dashT);dashT=null;dash=null;dsC='';dpP='';S.dp='';msg='';kind='';render()}
+function pct(a,b){return b?Math.round(a*100/b):0}
+function ringSvg(p){var r=44,c=2*Math.PI*r;return '<svg width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="'+p+' percent verified"><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="#8fe3b5" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*p/100)+' '+c+'" transform="rotate(-90 56 56)"/><text x="56" y="63" text-anchor="middle" font-size="24" font-weight="700" fill="#fff">'+p+'%</text></svg>'}
+function dashScreen(){
+  var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!dash)return h+'<h2>Executive Dashboard</h2><div class="sub">Exam Office and management only.</div><div class="box"><label for="f_ds" style="margin-top:0">Your employee code</label><input id="f_ds" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ds)+'">'
+    +'<label for="f_dp">Your PIN</label><input id="f_dp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go" onclick="dashLogin()">Open dashboard</button></div>';
+  return h+dashHtml()+'<button class="lnk" onclick="dashOut()">Log out</button>';
+}
+function slotState(x){
+  if(x.done===x.total&&x.total)return '<span class="pill p-ok">Complete</span>';
+  if(x.bad)return '<span class="pill p-at">Needs attention</span>';
+  if(x.todo===x.total)return '<span class="pill p-no">Not started</span>';
+  return '<span class="pill p-go">In progress</span>';
+}
+function waitTxt(m){if(m==null)return 'None waiting';var h=Math.floor(m/60),x=m%60;return h?h+' h '+x+' m':x+' min'}
+function dashHtml(){
+  var t=dash.totals,c=dash.cycle,p=pct(t.done,t.total);
+  var recv=t.total-t.todo,retd=t.ret+t.chk+t.done,chkd=t.chk+t.done;
+  var absP=t.seatedRet?(t.absent*100/t.seatedRet).toFixed(1):'0.0';
+  var h='<h2>Executive Dashboard</h2><div class="sub">'+esc(dash.label)+' &middot; updated '+esc(dash.at)+' &middot; refreshes every 30 s</div>';
+  h+='<label for="f_dd">Exam date</label><select id="f_dd" onchange="loadDash(this.value)">';
+  dash.dates.forEach(function(x){h+='<option value="'+esc(x.dk)+'"'+(x.dk===dash.date?' selected':'')+'>'+esc(x.label)+'</option>'});
+  h+='</select>';
+  h+='<div class="hero">'+ringSvg(p)+'<div><div class="t">Verified on this date</div><div class="v">'+t.done+' of '+t.total+' envelopes</div><div class="d">'+t.seated.toLocaleString()+' students seated across '+dash.slots.length+' slot'+(dash.slots.length===1?'':'s')+'</div></div></div>';
+  h+='<div class="kpis">'
+    +'<div class="kpi info"><div class="k">Returned from rooms</div><div class="n">'+pct(retd,t.total)+'%</div><div class="s">'+retd+' of '+t.total+' envelopes</div></div>'
+    +'<div class="kpi '+(t.bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+t.bad+'</div><div class="s">'+(t.bad?'CHECK COUNT / MISMATCH':'All counts match')+'</div></div>'
+    +'<div class="kpi warn2"><div class="k">Awaiting award list</div><div class="n">'+t.chk+'</div><div class="s">Longest wait: '+esc(waitTxt(dash.waitMin))+'</div></div>'
+    +'<div class="kpi"><div class="k">Absent (returned rooms)</div><div class="n">'+absP+'%</div><div class="s">'+t.absent.toLocaleString()+' of '+t.seatedRet.toLocaleString()+' students</div></div>'
+    +'</div>';
+  h+='<div class="two2"><div class="box"><div class="sec" style="margin-top:0">Progress of the day</div>';
+  [['Received',recv,'#e0a800'],['Returned',retd,'#3d9a54'],['Checked',chkd,'#3b78c4'],['Verified',t.done,'#0b5d3b']].forEach(function(f){
+    h+='<div class="fun"><span>'+f[0]+'</span><div class="tr"><i style="width:'+pct(f[1],t.total)+'%;background:'+f[2]+'"></i></div><b>'+pct(f[1],t.total)+'%</b></div>'});
+  h+='<div class="hint">Share of the day\'s '+t.total+' envelopes that have reached each step.</div></div>';
+  h+='<div class="box"><div class="sec" style="margin-top:0">Whole exam cycle</div>';
+  dash.byDate.forEach(function(d){h+='<div class="dt'+(d.dk===dash.date?' on':'')+'" onclick="loadDash(\''+esc(d.dk)+'\')"><span>'+esc(d.label)+'</span><div class="tr"><i style="width:'+pct(d.done,d.total)+'%"></i></div><span>'+d.done+'/'+d.total+(d.bad?' &#9888;':'')+'</span></div>'});
+  h+='<div class="hint">'+c.done+' of '+c.total+' verified in all ('+pct(c.done,c.total)+'%). Tap a date to open it.</div></div></div>';
+  h+='<div class="sec">Slots on this date</div><div class="two2">';
+  dash.slots.forEach(function(x){h+='<div class="box"><div class="sh"><b>'+esc(x.slot)+'</b>'+slotState(x)+'</div><div class="hint" style="margin:2px 0 0">'+x.done+' of '+x.total+' verified ('+pct(x.done,x.total)+'%) &middot; '+x.seated.toLocaleString()+' students</div>'+barHtml(x)+'</div>'});
+  if(!dash.slots.length)h+='<div class="empty">No envelopes on this date.</div>';
+  return h+'</div>';
+}
 /* ---- home page: find an envelope without its QR ---- */
 function cardHtml(r){
   var g=isBad(r.status)?'bad':grp(r.status);
@@ -172,6 +285,7 @@ function doSearch(auto){
 function render(){
   grab();var Ap=$('app');
   if(!A){Ap.innerHTML='<div class="box"><h2>Link incomplete</h2><p class="sub">Open this page from the QR on the envelope, or from the home link given by the Exam Office (it ends with ?a=...).</p></div>';return}
+  if(!ID&&DM){Ap.innerHTML=dashScreen();return}
   if(!ID){Ap.innerHTML=homeScreen();return}
   if(o&&o.denied){Ap.innerHTML='<div class="box"><h2>QR link not valid</h2><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker, or <a href="?a='+esc(A)+'">search for the envelope</a>.</p></div>';return}
   if(!o)return;
@@ -184,7 +298,7 @@ function render(){
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||'-')+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books':''))+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
-  s+=stageBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
+  s+=stageBox()+seatBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
   Ap.innerHTML=s;live();
 }
 function act(a){
@@ -214,7 +328,7 @@ function act(a){
   })();
 }
 /* ---- start ---- */
-if(emp&&A){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
+if(emp&&A&&!DM){google.script.run.withSuccessHandler(function(r){if(!eState){applyEmp(r);if(r.found||o||!ID)render()}}).withFailureHandler(function(){}).teacherLookup(emp,ID,KEY)}
 if(ID&&A){google.script.run.withSuccessHandler(function(r){setInfo(r);render()}).withFailureHandler(function(e){$('app').innerHTML='<div class="box"><h2>Error</h2><p>'+esc(e.message)+'</p></div>'}).envelopeScanInfo(ID,KEY)}
 else render();
 </script></body></html>
