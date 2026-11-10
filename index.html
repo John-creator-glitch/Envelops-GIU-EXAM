@@ -73,9 +73,9 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
-var note='',o=null,busy=false,showFix=false,showSeat=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false;
+var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
-var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',ds:'',dp:''};
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',ds:'',dp:''};
 try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
 S.emp=emp;
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
@@ -86,12 +86,13 @@ function grab(){for(var k in S){var e=$('f_'+k);if(e)S[k]=e.value}}
 function say(m,k){msg=m;kind=k||'';render();window.scrollTo(0,0)}
 function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
 function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
-function setInfo(r){o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m=''}
+function setInfo(r){o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent)}}
 /* ---- status groups (used for the colour bar and the filter buttons on the home page) ---- */
-var GL={todo:'Not received',room:'With invigilator',ret:'Returned',chk:'Checked',done:'Verified'};
+var GL={todo:'Not received',acc:'Awaiting Exam Office OK',room:'With invigilator',ret:'Returned',chk:'Checked',done:'Verified'};
 function grp(s){s=String(s||'');
   if(s==='Verified')return 'done';
   if(s==='Awaiting verification'||/MISMATCH/.test(s))return 'chk';
+  if(s==='Awaiting Exam Office OK')return 'room';
   if(s==='Returned OK'||s==='Returned: enter count'||s==='CHECK COUNT')return 'ret';
   if(s==='With invigilator')return 'room';return 'todo'}
 function isBad(s){return s==='CHECK COUNT'||/MISMATCH/.test(String(s||''))}
@@ -145,9 +146,10 @@ function stageBox(){
       +'<label for="f_pin">Your PIN</label><input id="f_pin" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.pin)+'">'
       +'<button id="go" onclick="act(\'verify\')">Award list received: verify</button></div>';
   }
-  if(showFix&&(st==='return'||st==='mark'))return idBox(countForm(o.returned?'Update counts':'Mark returned')+'<button class="lnk" onclick="showFix=false;render()">Back</button>');
+  if(showFix&&(st==='return'||st==='mark'||st==='accept'))return idBox(countForm(o.returned?'Update counts':'Submit return')+'<button class="lnk" onclick="showFix=false;render()">Back</button>');
+  if(st==='accept')return acceptBox();
   if(st==='receive')return idBox('<button id="go" onclick="act(\'receive\')">Mark received</button><div class="hint">Tap when you take the envelope from the Exam Office.</div>');
-  if(st==='return')return idBox(countForm('Mark returned'));
+  if(st==='return')return idBox(countForm('Submit return'));
   return idBox('<div class="hint" style="margin:0 0 4px">Filled books returned from the room: <b>'+esc(o.sheets)+'</b></div>'
     +'<label for="f_m">Answer books CHECKED by the teacher</label><input id="f_m" type="number" inputmode="numeric" min="0" value="'+esc(S.m)+'" oninput="live()">'
     +'<div id="chk2" class="chk"></div><button id="go" onclick="act(\'mark\')">Mark papers checked</button><button class="lnk" onclick="showFix=true;render()">Fix the returned counts</button>');
@@ -161,6 +163,60 @@ function seatBox(){
     +'<label for="f_ss">Your employee code</label><input id="f_ss" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ss)+'">'
     +'<label for="f_sp">Your PIN</label><input id="f_sp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.sp)+'">'
     +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
+}
+function acceptBox(){
+  var r=o.req||{},mis=Number(r.filled)+(Number(r.absent)||0)!==Number(o.seated);
+  return '<div class="box"><div class="hint" style="margin:0 0 6px"><b>Waiting for the Exam Office to confirm.</b> Invigilator: hand this envelope to the Exam Office. It is final only after the Exam Office receiver taps OK.</div>'
+    +row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent')+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
+    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent, but '+esc(o.seated)+' seated.</div>':'')
+    +'<div class="hint" style="margin:10px 0 0"><b>Exam Office receiver only:</b></div>'
+    +'<label for="f_rs">Your employee code</label><input id="f_rs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.rs)+'">'
+    +'<label for="f_rp">Your PIN</label><input id="f_rp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go" onclick="decideReturn(\'ok\')">Envelope received: OK</button>'
+    +'<button class="lnk" onclick="decideReturn(\'back\')">Not received / wrong counts: send back</button>'
+    +'<button class="lnk" onclick="showFix=true;render()">Fix the counts (invigilator)</button></div>';
+}
+function decideReturn(dc){
+  if(busy)return;grab();
+  if(!S.rs.trim()||!S.rp.trim()){say('Enter your Exam Office employee code and PIN.','err');return}
+  if(!confirm(dc==='ok'?'Confirm: you have the envelope in your hand and the counts are right?':'Send this return back to the invigilator?'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.rp='';
+      if(r.info){setInfo(r.info);if(r.ok)showFix=false}
+      render();window.scrollTo(0,0);
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeDecideReturn(ID,KEY,S.rs.trim(),S.rp,dc);
+  })();
+}
+function undoBox(){
+  if(!o||o.stage!=='mark')return '';
+  if(!showUndo)return '<button class="lnk" onclick="grab();showUndo=true;render()">Returned by mistake? Undo return (Exam Office)</button>';
+  return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. Use this if the envelope is still with the invigilator. The status goes back to "With invigilator" and the counts are cleared. The wrong entry stays in the log.</div>'
+    +'<label for="f_us" style="margin-top:0">Your employee code</label><input id="f_us" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.us)+'">'
+    +'<label for="f_up">Your PIN</label><input id="f_up" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go3" onclick="undoReturn()">Cancel the return</button><button class="lnk" onclick="showUndo=false;S.up=\'\';render()">Back</button></div>';
+}
+function undoReturn(){
+  if(busy)return;grab();
+  if(!S.us.trim()||!S.up.trim()){say('Enter your employee code and PIN.','err');return}
+  if(!confirm('Cancel the RETURNED entry? The envelope goes back to "With invigilator".'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.up='';
+      if(r.info){setInfo(r.info);if(r.ok){showUndo=false;showFix=false}}
+      render();window.scrollTo(0,0);
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeUndoReturn(ID,KEY,S.us.trim(),S.up);
+  })();
 }
 function setSeat(){
   if(busy)return;grab();
@@ -183,7 +239,7 @@ function setSeat(){
   })();
 }
 /* ---- dashboard: progress by date and slot ---- */
-var DC={done:'#0b5d3b',chk:'#3b78c4',ret:'#3d9a54',room:'#e0a800',todo:'#9aa8a1'},DK=['done','chk','ret','room','todo'];
+var DC={done:'#0b5d3b',chk:'#3b78c4',ret:'#3d9a54',acc:'#8e5bd1',room:'#e0a800',todo:'#9aa8a1'},DK=['done','chk','ret','acc','room','todo'];
 function barHtml(o){
   var t=o.total||1,b='<div class="bar" role="img" aria-label="'+o.done+' verified of '+o.total+'">';
   DK.forEach(function(k){if(o[k])b+='<i style="width:'+(o[k]*100/t)+'%;background:'+DC[k]+'"></i>'});
@@ -232,6 +288,7 @@ function dashHtml(){
     +'<div class="kpi info"><div class="k">Returned from rooms</div><div class="n">'+pct(retd,t.total)+'%</div><div class="s">'+retd+' of '+t.total+' envelopes</div></div>'
     +'<div class="kpi '+(t.bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+t.bad+'</div><div class="s">'+(t.bad?'CHECK COUNT / MISMATCH':'All counts match')+'</div></div>'
     +'<div class="kpi warn2"><div class="k">Awaiting award list</div><div class="n">'+t.chk+'</div><div class="s">Longest wait: '+esc(waitTxt(dash.waitMin))+'</div></div>'
+    +'<div class="kpi '+(t.acc?'warn2':'good')+'"><div class="k">Awaiting Exam Office OK</div><div class="n">'+t.acc+'</div><div class="s">'+(t.acc?'Longest wait: '+esc(waitTxt(dash.accWaitMin)):'Nothing waiting')+'</div></div>'
     +'<div class="kpi"><div class="k">Absent (returned rooms)</div><div class="n">'+absP+'%</div><div class="s">'+t.absent.toLocaleString()+' of '+t.seatedRet.toLocaleString()+' students</div></div>'
     +'</div>';
   h+='<div class="two2"><div class="box"><div class="sec" style="margin-top:0">Progress of the day</div>';
@@ -290,15 +347,15 @@ function render(){
   if(o&&o.denied){Ap.innerHTML='<div class="box"><h2>QR link not valid</h2><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker, or <a href="?a='+esc(A)+'">search for the envelope</a>.</p></div>';return}
   if(!o)return;
   if(!o.found){Ap.innerHTML='<div class="box"><h2>Envelope not found</h2><div class="id">'+esc(ID)+'</div><p class="sub">This QR is not in the tracker. Ask the Exam Office to Sync again or reprint the tag. Or <a href="?a='+esc(A)+'">search for the envelope</a>.</p></div>';return}
-  var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Checked','Verified'],idx=st==='done'?4:order.indexOf(st),s='';
+  var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Checked','Verified'],idx=st==='done'?4:st==='accept'?1:order.indexOf(st),s='';
   s+='<a class="lk" style="text-align:left;padding:12px 0 0" href="?a='+esc(A)+'">Back to search</a>';
   s+='<h2 style="margin-top:4px">'+esc(o.title)+'</h2><div class="sub">'+esc(o.code)+', '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>';
   s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'&#10003; ':'')+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
-    +row('Received',o.received||'-')+row('Returned',o.returned||'-')+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
+    +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books':''))+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
-  s+=stageBox()+seatBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
+  s+=stageBox()+undoBox()+seatBox()+'<a class="lk" href="?a='+esc(A)+'">Search another envelope</a>';
   Ap.innerHTML=s;live();
 }
 function act(a){
@@ -308,6 +365,7 @@ function act(a){
   if(a!=='verify'&&eState!=='found'){say('Enter your employee code and tap Continue first.','err');return}
   if(a==='return'&&bad(S.n)){say('Enter the number of FILLED answer books returned (0 or more).','err');return}
   if(a==='return'&&S.a!==''&&bad(S.a)){say('Students absent must be 0 or more.','err');return}
+  if(a==='return'&&!o.returned&&!confirm('Submit these counts and hand this envelope to the Exam Office now? It becomes final only after the Exam Office receiver confirms. If the envelope is still in the room, tap Cancel.'))return;
   if(a==='mark'&&bad(S.m)){say('Enter how many answer books were CHECKED (0 or more).','err');return}
   if(a==='mark'&&Number(S.m)!==Number(o.sheets)&&!confirm('You entered '+S.m+' checked, but '+o.sheets+' filled books were returned. This will be flagged. Continue?'))return;
   if(a==='verify'&&(!p.staff||!p.pin.trim())){say('Enter your employee code and PIN.','err');return}
