@@ -340,9 +340,9 @@ function dashHtml(){
   return h+'</div>';
 }
 /* ---- Exam Office Receiving Desk (?x=1): log in once, receive everything that was returned in one go ---- */
-var desk=null,xC='',xP='',dsel={},dfil='',deskT=null,deskIdle=null;
+var desk=null,xC='',xP='',dsel={},vsel={},dtab='ok',dfil='',deskT=null,deskIdle=null;
 function deskTouch(){clearTimeout(deskIdle);deskIdle=setTimeout(function(){deskOut('Logged out after 10 minutes without use.')},600000)}
-function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;xC='';xP='';dsel={};S.xp='';msg=m||'';kind=m?'err':'';render()}
+function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;xC='';xP='';dsel={};vsel={};dtab='ok';S.xp='';msg=m||'';kind=m?'err':'';render()}
 function deskLogin(){
   if(busy)return;grab();
   if(!S.xs.trim()||!S.xp.trim()){msg='Enter your Exam Office employee code and PIN.';kind='err';render();return}
@@ -355,6 +355,7 @@ function loadDesk(quiet,first){
     desk=r;
     if(first){msg='';kind='';dsel={};r.items.forEach(function(x){if(!x.mis)dsel[x.id]=1})}   /* clean ones are ticked; envelopes with a count problem are left for a human look */
     else Object.keys(dsel).forEach(function(id){if(!r.items.some(function(x){return x.id===id}))delete dsel[id]});
+    Object.keys(vsel).forEach(function(id){if(!(r.chk||[]).some(function(x){return x.id===id}))delete vsel[id]});
     if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},20000);
     render();
   }).withFailureHandler(function(e){
@@ -362,30 +363,74 @@ function loadDesk(quiet,first){
     msg='Error: '+((e&&e.message)||e);kind='err';render();
   }).envelopeDeskList(xC,xP);
 }
-function vis(){var o=[];(desk?desk.items:[]).forEach(function(x,i){if(!dfil||(x.dk+'|'+x.slot)===dfil)o.push(i)});return o}
+function vis(l){var o=[];(l||(desk?desk.items:[])).forEach(function(x,i){if(!dfil||(x.dk+'|'+x.slot)===dfil)o.push(i)});return o}
 function setDfil(v){grab();dfil=v;deskTouch();render()}
 function dtg(i,c){var x=desk.items[i];if(c)dsel[x.id]=1;else delete dsel[x.id];deskTouch();var n=Object.keys(dsel).length;var b=$('dbtn');if(b)b.textContent='Envelope received: OK ('+n+')';updBar()}
 function dAll(){grab();vis().forEach(function(i){var x=desk.items[i];if(!x.mis)dsel[x.id]=1});deskTouch();render()}
 function dNone(){grab();dsel={};deskTouch();render()}
+function setDtab(t){grab();dtab=t;dfil='';deskTouch();render()}
+function vtg(i,c){var x=desk.chk[i];if(c)vsel[x.id]=1;else delete vsel[x.id];deskTouch();var n=Object.keys(vsel).length;var b=$('dbtn');if(b)b.textContent='Award list received: Verify ('+n+')';updBar()}
+function vAll(){grab();vis(desk.chk).forEach(function(i){var x=desk.chk[i];if(!x.mis)vsel[x.id]=1});deskTouch();render()}
+function vNone(){grab();vsel={};deskTouch();render()}
 function deskScreen(){
   var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
-  if(!desk)return h+'<h2>Receiving Desk</h2><div class="sub">Exam Office receiver only. Log in once, then receive all returned envelopes in one go.</div><div class="box"><label for="f_xs" style="margin-top:0">Your employee code</label><input id="f_xs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.xs||'')+'">'
+  if(!desk)return h+'<h2>Receiving Desk</h2><div class="sub">Exam Office receiver only. Log in once, then receive returned envelopes and verify checked ones in one go.</div><div class="box"><label for="f_xs" style="margin-top:0">Your employee code</label><input id="f_xs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.xs||'')+'">'
     +'<label for="f_xp">Your PIN</label><input id="f_xp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
     +'<button id="go" onclick="deskLogin()">Open receiving desk</button></div>';
-  var seen={},opts='<option value="">All dates and slots ('+desk.items.length+')</option>';
-  desk.items.forEach(function(x){var k=x.dk+'|'+x.slot;if(seen[k])return;seen[k]=1;var n=0;desk.items.forEach(function(y){if(y.dk+'|'+y.slot===k)n++});opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(x.date+' - '+x.slot)+' ('+n+')</option>'});
-  var v=vis();
+  var C=dtab==='chk',chk=desk.chk||[],L=C?chk:desk.items,seen={},opts='<option value="">All dates and slots ('+L.length+')</option>';
+  L.forEach(function(x){var k=x.dk+'|'+x.slot;if(seen[k])return;seen[k]=1;var n=0;L.forEach(function(y){if(y.dk+'|'+y.slot===k)n++});opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(x.date+' - '+x.slot)+' ('+n+')</option>'});
+  var v=vis(L);
   h+='<h2>Receiving Desk</h2><div class="sub">Logged in as '+esc(xC)+' &middot; updated '+esc(desk.at)+' &middot; refreshes every 20 s</div>';
-  h+='<div class="box"><b>'+desk.items.length+' envelope'+(desk.items.length===1?'':'s')+' waiting for your OK</b><div class="hint" style="margin:2px 0 0">Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.</div>'
+  h+='<div class="tabs"><button class="'+(!C?'on':'')+'" onclick="setDtab(\'ok\')">Waiting for OK ('+desk.items.length+')</button><button class="'+(C?'on':'')+'" onclick="setDtab(\'chk\')">Checked ('+chk.length+')</button></div>';
+  h+='<div class="box"><b>'+L.length+(C?' checked envelope'+(L.length===1?'':'s')+' waiting for the award list':' envelope'+(L.length===1?'':'s')+' waiting for your OK')+'</b>'
+    +'<div class="hint" style="margin:2px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.')+'</div>'
     +'<label for="f_xf">Show</label><select id="f_xf" onchange="setDfil(this.value)">'+opts+'</select>'
-    +'<div class="two"><button class="lnk" onclick="dAll()">Select all (no problem)</button><button class="lnk" onclick="dNone()">Clear selection</button></div></div>';
-  if(!v.length)h+='<div class="empty">'+(desk.items.length?'Nothing waiting in this slot.':'Nothing is waiting. New returns appear here by themselves.')+'</div>';
-  v.forEach(function(i){var x=desk.items[i];
-    h+='<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(dsel[x.id]?'checked ':'')+'onchange="dtg('+i+',this.checked)"><label class="dr'+(x.mis?' bad':'')+'"><b>'+esc(x.title)+'</b>'
+    +'<div class="two"><button class="lnk" onclick="'+(C?'vAll()':'dAll()')+'">Select all (no problem)</button><button class="lnk" onclick="'+(C?'vNone()':'dNone()')+'">Clear selection</button></div></div>';
+  if(!v.length)h+='<div class="empty">'+(L.length?'Nothing here for this slot.':(C?'No checked envelope is waiting for the award list.':'Nothing is waiting. New returns appear here by themselves.'))+'</div>';
+  v.forEach(function(i){var x=L[i],on=C?vsel[x.id]:dsel[x.id];
+    h+='<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(on?'checked ':'')+'onchange="'+(C?'vtg':'dtg')+'('+i+',this.checked)"><label class="dr'+(x.mis?' bad':'')+'"><b>'+esc(x.title)+'</b>'
       +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
-      +'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
-      +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':'')+'</label></div>'});
+      +(C?'<span><b style="display:inline">Checked '+esc(x.cbooks)+' of '+esc(x.filled)+' filled books</b> ('+esc(x.absent)+' absent, seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts do not match (checked / filled / absent / seated). Look at it before verifying.</div>':'')
+        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':''))+'</label></div>'});
   return h+'<button class="lnk" onclick="deskOut()">Log out</button>';
+}
+function deskVerify(){
+  if(busy)return;
+  var ids=Object.keys(vsel);if(!ids.length){say('Tick at least one envelope.','err');return}
+  if(!confirm('Verify '+ids.length+' envelope(s)? The award list has been received and this is final.'))return;
+  deskTouch();setBusy(true);
+  var items={};(desk.chk||[]).forEach(function(x){items[x.id]=x});
+  var done=0,fails=[],stop=false,seen=0;
+  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
+  function one(id,cb){
+    if(stop){cb();return}
+    var x=items[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete vsel[id]}
+        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+        seen++;prog();cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
+      }).envelopeScanAction(id,'verify',{emp:'',filled:'',absent:'',marked:'',staff:xC,pin:xP},x.k);
+    })();
+  }
+  function finish(){
+    busy=false;SC={};
+    msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':'Verified: '+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
+    kind=(stop||fails.length)?'err':'ok';
+    if(stop){deskOut(msg);return}
+    window.scrollTo(0,0);loadDesk(false);
+  }
+  prog();
+  pool(ids.slice(0,1),1,one,function(){},function(){
+    if(stop||ids.length<2){finish();return}
+    pool(ids.slice(1),3,one,function(){},finish);
+  });
 }
 function deskDecide(dc){
   if(busy)return;
@@ -464,9 +509,9 @@ function cardHtml(r,i){
 }
 function updBar(){
   var b=$('bb');if(!b)return;
-  if(DESK&&!ID){var dn=Object.keys(dsel).length,on=!!(desk&&dn>0);if(!on){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
+  if(DESK&&!ID){var dn=Object.keys(dtab==='chk'?vsel:dsel).length,on=!!(desk&&dn>0);if(!on){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
     b.style.display='block';document.body.style.paddingBottom='120px';
-    if(!busy)b.innerHTML='<div class="bbi"><button id="dbtn" onclick="deskDecide(\'ok\')">Envelope received: OK ('+dn+')</button><button class="lnk" style="padding:6px" onclick="deskDecide(\'back\')">Send back selected ('+dn+')</button></div>';return}
+    if(!busy)b.innerHTML=dtab==='chk'?'<div class="bbi"><button id="dbtn" onclick="deskVerify()">Award list received: Verify ('+dn+')</button></div>':'<div class="bbi"><button id="dbtn" onclick="deskDecide(\'ok\')">Envelope received: OK ('+dn+')</button><button class="lnk" style="padding:6px" onclick="deskDecide(\'back\')">Send back selected ('+dn+')</button></div>';return}
   var n=Object.keys(sel).length,show=!ID&&!DM&&eState==='found'&&searched&&res&&res.length&&n>0&&(filt==='all'||filt==='todo');
   if(!show){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
   b.style.display='block';document.body.style.paddingBottom='84px';
