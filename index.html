@@ -1,4 +1,4 @@
-<!-- Envelope Tracker page v7. Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
+<!-- Envelope Tracker page v8. Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="app" content="envelope-tracker-page"><title>Envelope Tracker</title><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{--g:#0e3b2e;--g2:#e8f1ec;--bg:#f2f5f3;--tx:#1b2b24;--mu:#5d6d65;--ln:#d9e1dc}
@@ -46,6 +46,7 @@ select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #9aa
 .dt{display:grid;grid-template-columns:86px 1fr 62px;gap:8px;align-items:center;font-size:13px;padding:6px 6px;border-radius:8px;cursor:pointer}.dt.on{background:var(--g2);font-weight:600}.dt .tr{height:10px;background:#e3e8e5;border-radius:5px;overflow:hidden}.dt .tr i{display:block;height:100%;background:#0b5d3b}.dt span:last-child{text-align:right;color:var(--mu);font-size:12px}
 .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px}.p-ok{background:#b7e1cd;color:#0b5d3b}.p-go{background:#cfe2f3;color:#1c4587}.p-at{background:#f4c7c3;color:#b3261e}.p-no{background:#eceff1;color:#546e7a}
 .sh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rw{display:flex;align-items:flex-start;gap:8px}.rw input{width:26px;height:26px;flex:none;margin:18px 0 0;padding:0}.rw a.res{flex:1;min-width:0}
 @media(max-width:480px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}}
 .empty{text-align:center;color:var(--mu);font-size:14px;padding:22px 8px}
 </style></head><body>
@@ -76,10 +77,11 @@ var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),msg='',kind='',res=null,filt='all',searched=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
 var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',ds:'',dp:''};
-/* FS = this envelope page was opened from the manual search. Then nobody's code is remembered: each person types their own. A QR scan (no s=1) behaves as before. */
-var FS=Q.get('s')==='1',rem=!FS;
-try{localStorage.removeItem('envEmp');emp=FS?'':(sessionStorage.getItem('envEmp')||'')}catch(e){}
+/* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
+var FS=Q.get('s')==='1',rem=true;
+try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
 S.emp=emp;
+try{S.rs=sessionStorage.getItem('envRs')||''}catch(e){}
 function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
 S.d='';
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -101,7 +103,7 @@ function isBad(s){return s==='CHECK COUNT'||/MISMATCH/.test(String(s||''))}
 /* ---- employee identity (one login, remembered on this phone) ---- */
 function applyEmp(r){if(r.found){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office'}else{eState='new';eCan=r.canRegister===true}}
 function eLookup(){
-  grab();emp=S.emp.trim();try{if(!FS)sessionStorage.setItem('envEmp',emp)}catch(e){}
+  grab();emp=S.emp.trim();try{sessionStorage.setItem('envEmp',emp)}catch(e){}
   if(!emp){say('Enter your employee code.','err');return}
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
@@ -111,7 +113,7 @@ function eRegister(){
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';msg='';kind=''}else{msg=r.msg;kind='err'}render()}).withFailureHandler(fail).teacherRegister(emp,S.tn.trim(),ID,KEY);
 }
-function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';try{if(!FS)sessionStorage.removeItem('envEmp')}catch(e){}render()}
+function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';try{sessionStorage.removeItem('envEmp')}catch(e){}render()}
 function idBox(inner){
   var h='<div class="box">';
   if(eState==='found')h+=row('Employee',empName+' ('+emp+')')+(empNote?'<div class="hint">'+esc(empNote)+'</div>':'')+inner+'<button class="lnk" onclick="eChange()">Not you? Change employee code</button>';
@@ -181,6 +183,7 @@ function acceptBox(){
 function decideReturn(dc){
   if(busy)return;grab();
   if(!S.rs.trim()||!S.rp.trim()){say('Enter your Exam Office employee code and PIN.','err');return}
+  try{sessionStorage.setItem('envRs',S.rs.trim())}catch(e){}
   if(!confirm(dc==='ok'?'Confirm: you have the envelope in your hand and the counts are right?':'Send this return back to the invigilator?'))return;
   setBusy(true);var tries=0;
   (function send(){
@@ -306,10 +309,75 @@ function dashHtml(){
   return h+'</div>';
 }
 /* ---- home page: find an envelope without its QR ---- */
-function cardHtml(r){
+var sel={},sel2={};
+function cardHtml(r,i){
   var g=isBad(r.status)?'bad':grp(r.status);
-  return '<a class="res g-'+g+'" onclick="location.replace(this.href);return false" href="?e='+encodeURIComponent(r.id)+'&k='+encodeURIComponent(r.k)+'&a='+encodeURIComponent(A)+'&s=1"><b>'+esc(r.title)+'</b>'
+  var a='<a class="res g-'+g+'" onclick="location.replace(this.href);return false" href="?e='+encodeURIComponent(r.id)+'&k='+encodeURIComponent(r.k)+'&a='+encodeURIComponent(A)+'&s=1"><b>'+esc(r.title)+'</b>'
     +'<span>'+esc(r.code)+', '+esc(r.program)+' Sem '+esc(r.sem)+'</span><span>Room '+esc(r.room)+', '+esc(r.date)+', '+esc(r.slot)+'</span><i>'+esc(r.status)+'</i></a>';
+  if(r.status==='Awaiting Exam Office OK')return '<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(sel2[r.id]?'checked ':'')+'onchange="tg2('+i+',this.checked)">'+a+'</div>';
+  if(g!=='todo')return a;
+  return '<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(sel[r.id]?'checked ':'')+'onchange="tg('+i+',this.checked)">'+a+'</div>';
+}
+function tg(i,c){var r=res[i];if(c)sel[r.id]=r.k;else delete sel[r.id];var b=$('bulk');if(b)b.textContent='Receive selected ('+Object.keys(sel).length+')'}
+function selAll(){grab();res.forEach(function(r){if(grp(r.status)==='todo')sel[r.id]=r.k});render()}
+function selNone(){grab();sel={};render()}
+function nm(id){for(var i=0;i<res.length;i++)if(res[i].id===id)return res[i].code+' Room '+res[i].room;return id}
+function bulkReceive(){
+  if(busy)return;grab();
+  var ids=Object.keys(sel);
+  if(!ids.length){say('Select at least one envelope.','err');return}
+  if(eState!=='found'){say('Enter your employee code first.','err');return}
+  if(!confirm('Mark '+ids.length+' envelope(s) as received by '+empName+'?'))return;
+  setBusy(true);
+  var done=0,fails=[],i=0,p={emp:emp,filled:'',absent:'',marked:'',staff:'',pin:''};
+  function finish(){busy=false;var m='Received '+done+' of '+ids.length+'.';if(fails.length)m+=' Not received: '+fails.join('; ');msg=m;kind=fails.length?'err':'ok';render();window.scrollTo(0,0)}
+  function next(){
+    if(i>=ids.length){finish();return}
+    var id=ids[i],k=sel[id],tries=0,b=$('bulk');
+    if(b)b.textContent='Receiving '+(i+1)+' of '+ids.length+'...';
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+        if(r.ok){done++;delete sel[id];res.forEach(function(x){if(x.id===id)x.status='With invigilator'})}
+        else fails.push(nm(id)+' ('+(r.msg||'error')+')');
+        i++;next();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');i++;next();
+      }).envelopeScanAction(id,'receive',p,k);
+    })();
+  }
+  next();
+}
+function tg2(i,c){var r=res[i];if(c)sel2[r.id]=r.k;else delete sel2[r.id];var b=$('bulk2');if(b)b.textContent='Envelope received: OK ('+Object.keys(sel2).length+')'}
+function selAll2(){grab();res.forEach(function(r){if(r.status==='Awaiting Exam Office OK')sel2[r.id]=r.k});render()}
+function bulkOk(){
+  if(busy)return;grab();
+  var ids=Object.keys(sel2);
+  if(!ids.length){say('Select at least one envelope.','err');return}
+  if(!S.rs.trim()||!S.rp.trim()){say('Enter your Exam Office employee code and PIN.','err');return}
+  if(!confirm('Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?'))return;
+  try{sessionStorage.setItem('envRs',S.rs.trim())}catch(e){}
+  setBusy(true);
+  var done=0,fails=[],i=0,code=S.rs.trim(),pin=S.rp;
+  function finish(){busy=false;S.rp='';var m='OK done for '+done+' of '+ids.length+'.';if(fails.length)m+=' Not done: '+fails.join('; ');msg=m;kind=fails.length?'err':'ok';render();window.scrollTo(0,0)}
+  function next(){
+    if(i>=ids.length){finish();return}
+    var id=ids[i],k=sel2[id],tries=0,b=$('bulk2');
+    if(b)b.textContent='Working '+(i+1)+' of '+ids.length+'...';
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+        if(r.ok){done++;delete sel2[id];res.forEach(function(x){if(x.id===id)x.status='Returned OK'})}
+        else fails.push(nm(id)+' ('+(r.msg||'error')+')');
+        i++;next();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');i++;next();
+      }).envelopeDecideReturn(id,k,code,pin,'ok');
+    })();
+  }
+  next();
 }
 function resultsHtml(){
   if(!searched)return '';
@@ -320,7 +388,14 @@ function resultsHtml(){
   keys.forEach(function(k){if(k!=='all'&&!cnt[k])return;h+='<button class="chip'+(filt===k?' on':'')+'" onclick="setFilt(\''+k+'\')">'+(k==='all'?'All':GL[k])+' '+cnt[k]+'</button>'});
   h+='</div>';
   var list=res.filter(function(r){return filt==='all'||grp(r.status)===filt});
-  h+=list.map(cardHtml).join('');
+  if(cnt.todo&&(filt==='all'||filt==='todo'))h+='<div class="two"><button class="lnk" onclick="selAll()">Select all not received</button><button class="lnk" onclick="selNone()">Clear selection</button></div><button id="bulk" onclick="bulkReceive()">Receive selected ('+Object.keys(sel).length+')</button>';
+  var nAw=0;res.forEach(function(r){if(r.status==='Awaiting Exam Office OK')nAw++});
+  if(nAw&&(filt==='all'||filt==='room'))h+='<div class="box"><div class="hint" style="margin:0 0 6px"><b>Exam Office receiver only.</b> Tick the envelopes in your hand ('+nAw+' waiting), then enter your code and PIN once.</div><button class="lnk" onclick="selAll2()">Select all awaiting OK</button>'
+    +'<label for="f_rs">Your employee code</label><input id="f_rs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.rs)+'">'
+    +'<label for="f_rp">Your PIN</label><input id="f_rp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="bulk2" onclick="bulkOk()">Envelope received: OK ('+Object.keys(sel2).length+')</button></div>';
+  var cards=[];res.forEach(function(r,i){if(filt==='all'||grp(r.status)===filt)cards.push(cardHtml(r,i))});
+  h+=cards.join('');
   if(res.length>=30)h+='<div class="hint">Showing the first 30. Add a word or a date to narrow the list.</div>';
   return h;
 }
