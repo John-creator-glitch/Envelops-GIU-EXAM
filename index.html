@@ -150,6 +150,8 @@ a.res i{margin-top:8px}
 .pt{font-size:20px;font-weight:700;color:var(--tx)}.pm{font-size:15px;line-height:1.45;color:var(--mu);margin-top:8px}.pcard.pw .pm{color:#5c4600;font-weight:600}
 .pcard button{margin-top:16px}
 @keyframes fadein{from{opacity:0}to{opacity:1}}@keyframes popin{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:none}}
+
+.okbox{background:#e3f4ea;border:1.5px solid #9fd3b3;border-left:6px solid #0b5d3b}.okbox .ho-t{color:#0b5d3b}.okbox .ho-b{color:#1c3d2b;font-size:14px}
 </style></head><body>
 <div class="top"><div class="th"><h1>Envelope Tracker</h1><div class="s">Exam Office</div><nav id="tn" class="tn"></nav></div></div>
 <div class="c"><div id="app"><div class="sk" style="height:22px;width:55%;margin:18px 0 8px"></div><div class="sk" style="height:150px;margin:12px 0"></div><div class="sk" style="height:56px"></div></div></div>
@@ -696,7 +698,10 @@ function pollInfo(){
     if(JSON.stringify(o)===JSON.stringify(r))return;
     cacheInfo(id,r);
     var seatChg=String(r.seated)!==String(o.seated),ae=document.activeElement,typing=!!(ae&&(ae.tagName==='INPUT'||ae.tagName==='SELECT'));
-    if(r.stage!==o.stage){grab();setInfo(r);msg='This envelope was updated by someone else.';kind='ok';render();return}
+    if(r.stage!==o.stage){var was=o.stage;grab();setInfo(r);msg='This envelope was updated by someone else.';kind='ok';render();
+      if(was==='accept'&&r.stage==='mark'){msg='Receiving confirmed by the Exam Office.';popup('Receiving confirmed','The Exam Officer has confirmed this envelope. Your return is complete. Thank you.')}
+      else if(was==='accept'&&r.stage==='return'){msg='Sent back by the Exam Office.';kind='err';render();popup('Sent back','The Exam Officer sent this return back. Fix the counts and submit again.',true,true)}
+      return}
     if(typing){o.seated=r.seated;o.status=r.status;syncRes(r);live();return}   /* do not disturb typing; the check line already uses the new strength */
     grab();syncRes(r);o=r;if(seatChg){msg='Student strength was updated to '+r.seated+'.';kind='ok'}render();
   }).withFailureHandler(function(){}).envelopeScanInfo(id,k);
@@ -849,6 +854,7 @@ function render(){
   s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   if(st==='accept'&&!showFix)s+=handoverBanner();
+  if(st==='mark'&&o.returned)s+='<div class="box okbox"><div class="ho-t">&#10003; Return confirmed by the Exam Office</div><div class="ho-b">The invigilator\'s work on this envelope is complete. Next step: the teacher checks the answer books.</div></div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books'+'':''))+(o.mcqN?row('UMC cases (book not in envelope)',String(o.mcqN)):'')+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
