@@ -60,6 +60,64 @@ select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #9aa
 @media(max-width:480px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}}
 .dr{flex:1;min-width:0;display:block;background:#fff;border:1px solid var(--ln);border-left:6px solid #e0a800;border-radius:12px;padding:10px 12px;margin:8px 0;box-shadow:var(--sh)}.dr.bad{border-left-color:#b3261e}.dr b{display:block;font-size:15px;line-height:1.3}.dr span{display:block;font-size:12.5px;color:var(--mu);margin-top:2px}
 .empty{text-align:center;color:var(--mu);font-size:14px;padding:22px 8px}
+
+/* ===== look v10: polish only (no logic changes) ===== */
+:root{--g:#0b4a37;--g1:#0f6a4e;--g2:#e6f3ec;--bg:#eef3f0;--ln:#dde6e1;--r:16px;--sh:0 1px 2px rgba(10,40,28,.05),0 6px 18px rgba(10,40,28,.07);--ac:#f2b705}
+body{background:radial-gradient(1200px 300px at 50% -80px,#d7ebe0,transparent 70%),var(--bg);background-repeat:no-repeat;letter-spacing:.005em}
+.top{position:sticky;top:0;z-index:7;background:linear-gradient(120deg,#08392a 0%,#0f6a4e 100%);padding:calc(12px + env(safe-area-inset-top)) 16px 12px;box-shadow:0 6px 20px rgba(8,57,42,.28)}
+.top>*{max-width:520px;margin-left:auto;margin-right:auto}.dm .top>*{max-width:1040px}
+.top h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.top h1::before{content:"";flex:none;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.16) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='14' rx='2.5'/><path d='M3.5 6.5l8.5 6.5 8.5-6.5'/></svg>") center/18px no-repeat}
+.top .s{margin-left:40px;font-size:12.5px;opacity:.78}
+h2{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-top:18px}
+.id{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;background:#e1ebe5;color:#4d6358;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em}
+.box{border-radius:var(--r);padding:16px;border:1px solid var(--ln);box-shadow:var(--sh)}
+.row{padding:9px 0;border-bottom:1px dashed #e3eae6}.row span{font-size:13px}.row b{font-weight:650}
+/* stepper: connected rail */
+.steps{gap:0;margin:18px 0 8px;position:relative;counter-reset:s}
+.stp{position:relative;background:none!important;color:#8a9a92;border:0!important;font-size:11.5px;padding:30px 2px 0;counter-increment:s}
+.stp::before{content:counter(s);position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:24px;border-radius:50%;background:#dfe7e2;color:#6c7d74;font-size:12px;line-height:24px;font-weight:700;z-index:1}
+.stp::after{content:"";position:absolute;top:11px;left:-50%;width:100%;height:2px;background:#d3ddd7}.stp:first-child::after{display:none}
+.stp.done{color:var(--g)}.stp.done::before{content:"\2713";background:var(--g);color:#fff}.stp.done::after{background:var(--g)}
+.stp.now{color:var(--g);font-weight:700}.stp.now::before{background:#fff;color:var(--g);box-shadow:0 0 0 2px var(--g),0 0 0 6px rgba(15,106,78,.15)}.stp.now::after{background:var(--g)}
+/* inputs */
+label{font-size:12.5px;font-weight:650;color:#3b4f45;margin:14px 0 5px;letter-spacing:.01em}
+input,select{border:1.5px solid #c3d0c9;border-radius:12px;background:#fbfdfc;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{outline:none;border-color:var(--g1);box-shadow:0 0 0 4px rgba(15,106,78,.16);background:#fff}
+button:focus-visible,a:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+/* buttons */
+button{background:linear-gradient(180deg,#0f6a4e,#0b4a37);border-radius:14px;padding:15px;box-shadow:0 6px 14px rgba(11,74,55,.25),inset 0 1px 0 rgba(255,255,255,.18);letter-spacing:.01em}
+button:hover:not(:disabled){filter:brightness(1.06)}
+button:disabled{background:#a9b8b0;box-shadow:none}
+.lnk{background:none;box-shadow:none;color:var(--g);font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #c3d6cc;border-radius:12px;background:#fff;padding:11px;margin-top:8px}
+.lnk:hover:not(:disabled){background:var(--g2);filter:none}
+.lnk:disabled{background:#f3f6f4;color:#9aa8a1;border-color:#e1e8e4}
+a.lk{font-weight:600;text-decoration:none;padding:12px}
+.tabs button{border:0;background:#fff;color:var(--g);box-shadow:var(--sh);border-radius:12px}.tabs button.on{background:linear-gradient(180deg,#0f6a4e,#0b4a37);color:#fff}
+.two .lnk{font-size:13px}
+/* messages / checks */
+.msg{border-radius:14px;padding:13px 14px;border:1px solid transparent}.msg.ok{background:#dcf1e3;border-color:#b5dfc2;color:#0b3d1c}.msg.err{background:#fde3e0;border-color:#f3b9b3;color:#7a1410}
+.chk{padding:0;border-radius:10px}.chk.good,.chk.bad{padding:9px 11px}.chk.good{background:#e1f4e7}.chk.bad{background:#fde7e4}
+.warn{border-radius:10px;border:1px solid #f3b9b3;padding:9px 11px}
+.hint{line-height:1.45}
+/* result cards */
+a.res,.dr{border-radius:var(--r);border:1px solid var(--ln);border-left-width:6px;padding:12px 14px;box-shadow:var(--sh)}
+a.res b,.dr b{font-weight:650}
+a.res i{margin-top:8px}
+.chip{border-radius:99px;padding:8px 14px;box-shadow:0 1px 2px rgba(10,40,28,.06)}
+.chip.on{background:linear-gradient(180deg,#0f6a4e,#0b4a37);box-shadow:0 4px 10px rgba(11,74,55,.25)}
+.rw input[type=checkbox]{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:8px;border:2px solid #b2c3b9;background:#fff;margin:20px 0 0;position:relative;cursor:pointer;transition:all .12s}
+.rw input[type=checkbox]:checked{background:var(--g);border-color:var(--g)}
+.rw input[type=checkbox]:checked::after{content:"";position:absolute;left:7px;top:2px;width:6px;height:12px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg)}
+.bb{background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--ln)}
+.empty{background:rgba(255,255,255,.6);border:1px dashed #c3d0c9;border-radius:var(--r);margin:12px 0;padding:28px 12px}
+/* dashboard */
+.hero{background:linear-gradient(120deg,#08392a,#0f6a4e 70%,#14876a);border-radius:20px;box-shadow:0 10px 28px rgba(8,57,42,.25)}
+.kpi{border-radius:16px;border:1px solid var(--ln);border-top-width:4px}
+.sec{font-size:12px;color:#4d6358}
+.bar,.fun .tr,.dt .tr{border-radius:99px}
+@media(min-width:700px){body:not(.dm) .c{padding-top:6px}}
+.dr{border-left-color:#e0a800}.dr.bad{border-left-color:#b3261e}a.res.g-todo{border-left-color:#9aa8a1}a.res.g-room{border-left-color:#e0a800}a.res.g-ret{border-left-color:#3d9a54}a.res.g-chk{border-left-color:#3b78c4}a.res.g-done{border-left-color:#0b5d3b}a.res.g-bad{border-left-color:#b3261e}
 </style></head><body>
 <div class="top"><h1>Envelope Tracker</h1><div class="s">Exam Office</div></div>
 <div class="c"><div id="app"><div class="sk" style="height:22px;width:55%;margin:18px 0 8px"></div><div class="sk" style="height:150px;margin:12px 0"></div><div class="sk" style="height:56px"></div></div></div>
@@ -635,7 +693,7 @@ function render(){
   var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Checked','Verified'],idx=st==='done'?4:st==='accept'?1:order.indexOf(st),s='';
   s+='<a class="lk" style="text-align:left;padding:12px 0 0" onclick="goHome();return false" href="?a='+esc(A)+'">Back to search</a>';
   s+='<h2 style="margin-top:4px">'+esc(o.title)+'</h2><div class="sub">'+esc(o.code)+', '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>'+(stale?'<div class="upd">Updating...</div>':'');
-  s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'&#10003; ':'')+labels[i]+'</div>';s+='</div>';
+  s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
