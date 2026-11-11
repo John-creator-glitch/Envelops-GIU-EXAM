@@ -1,4 +1,4 @@
-<!-- Envelope Tracker page v9 (faster). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
+<!-- Envelope Tracker page v12 (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="app" content="envelope-tracker-page"><title>Envelope Tracker</title><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0e3b2e">
 <link rel="preconnect" href="https://script.google.com"><link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <style>
@@ -118,8 +118,24 @@ a.res i{margin-top:8px}
 .bar,.fun .tr,.dt .tr{border-radius:99px}
 @media(min-width:700px){body:not(.dm) .c{padding-top:6px}}
 .dr{border-left-color:#e0a800}.dr.bad{border-left-color:#b3261e}a.res.g-todo{border-left-color:#9aa8a1}a.res.g-room{border-left-color:#e0a800}a.res.g-ret{border-left-color:#3d9a54}a.res.g-chk{border-left-color:#3b78c4}a.res.g-done{border-left-color:#0b5d3b}a.res.g-bad{border-left-color:#b3261e}
+/* receiving desk v11 */
+.dr.late{border-left-color:#b3261e}.dr .who{color:var(--tx)}.dr .age{font-weight:700;color:#7a5b00}.dr .age.late{color:#b3261e}
+.chips .chip small{opacity:.75;font-size:11px}
+.dsum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--mu);margin-top:6px}.dsum b{color:var(--tx)}
+/* v12 */
+.tn{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.tn:empty{display:none}
+.tn a{display:inline-flex;align-items:center;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24)}
+.tn a:hover{background:rgba(255,255,255,.28)}
+.dk .bbi{max-width:560px}
+.dgrid{display:grid;grid-template-columns:1fr;gap:0 14px}
+.dtool{display:grid;grid-template-columns:1fr;gap:0 12px}.dtool label{margin-top:0}.dtool>div+div label{margin-top:12px}
+@media(min-width:900px){.dk .dgrid{grid-template-columns:1fr 1fr}.dtool{grid-template-columns:2fr 1fr 1fr}.dtool>div+div label{margin-top:0}}
+.dk .kpis{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.dk h2{margin-top:20px}
+.dr{transition:box-shadow .12s,transform .08s}.dr:hover{box-shadow:0 2px 4px rgba(10,40,28,.08),0 10px 24px rgba(10,40,28,.10)}
+.rw input[type=checkbox]:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 </style></head><body>
-<div class="top"><h1>Envelope Tracker</h1><div class="s">Exam Office</div></div>
+<div class="top"><div class="th"><h1>Envelope Tracker</h1><div class="s">Exam Office</div><nav id="tn" class="tn"></nav></div></div>
 <div class="c"><div id="app"><div class="sk" style="height:22px;width:55%;margin:18px 0 8px"></div><div class="sk" style="height:150px;margin:12px 0"></div><div class="sk" style="height:56px"></div></div></div>
 <div id="bb" class="bb"></div>
 <script>
@@ -129,7 +145,7 @@ var DEFAULT_A='AKfycbyrh9jmOp6Kw6EjuAKg8CLZv6d274zaMhXT-Hfzzpt76Mxt4z6ZJDjXN0nGG
 var Q=new URLSearchParams(location.search),API='https://script.google.com/macros/s/'+(Q.get('a')||DEFAULT_A)+'/exec';
 (function(){
   /* read-only calls are retried once by themselves if the network drops (safe: they change nothing) */
-  var READS={teacherLookup:1,envelopeScanInfo:1,envelopeSearch:1,envelopeDashboard:1};
+  var READS={teacherLookup:1,envelopeScanInfo:1,envelopeSearch:1,envelopeDashboard:1,envelopeDeskList:1};
   function mk(ok,bad){return new Proxy({},{get:function(t,n){
     if(n==='withSuccessHandler')return function(f){return mk(f,bad)};
     if(n==='withFailureHandler')return function(f){return mk(ok,f)};
@@ -150,6 +166,7 @@ var Q=new URLSearchParams(location.search),API='https://script.google.com/macros
 </script>
 <script>
 if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
+else if(Q.get('x')==='1'&&!Q.get('e'))document.body.className='dm dk';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
@@ -169,8 +186,9 @@ function say(m,k){msg=m;kind=k||'';render();window.scrollTo(0,0)}
 function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
 function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
 function syncRes(r){if(r&&r.found&&r.status&&res)res.forEach(function(x){if(x.id===r.id)x.status=r.status})}
-function setInfo(r){syncRes(r);o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
-  try{if(r&&r.found&&ID)sessionStorage.setItem('envI:'+ID,JSON.stringify(r))}catch(e){}}
+function cacheInfo(id,r){try{var c={};for(var k in r)c[k]=r[k];c._t=Date.now();sessionStorage.setItem('envI:'+id,JSON.stringify(c))}catch(e){}}
+function setInfo(r,nocache){syncRes(r);o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
+  if(!nocache&&r&&r.found&&ID)cacheInfo(ID,r)}
 function skel(){return '<div class="sk" style="height:22px;width:60%;margin:18px 0 8px"></div><div class="sk" style="height:38px;margin:12px 0"></div><div class="sk" style="height:200px;margin:12px 0"></div><div class="sk" style="height:140px"></div>'}
 function blocked(){if(stale){say('Updating this envelope, try again in a moment.','err');return true}return false}
 /* run fn over ids with up to n at a time */
@@ -321,7 +339,7 @@ function setSeat(){
     google.script.run.withSuccessHandler(function(r){
       if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
       busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.sp='';
-      if(r.info){syncRes(r.info);o=r.info;try{sessionStorage.setItem('envI:'+ID,JSON.stringify(r.info))}catch(e){}}   /* keep what was typed in the other boxes */
+      if(r.info){syncRes(r.info);o=r.info;cacheInfo(ID,r.info)}   /* keep what was typed in the other boxes */
       if(r.ok){showSeat=false;SC={}}
       render();window.scrollTo(0,0);
     }).withFailureHandler(function(e){
@@ -339,26 +357,36 @@ function barHtml(o){
   DK.forEach(function(k){b+='<span><u style="background:'+DC[k]+'"></u>'+GL[k]+' <b>'+o[k]+'</b></span>'});
   return b+'</div>'+(o.bad?'<div class="warn">'+o.bad+' with a count problem (CHECK COUNT / MISMATCH)</div>':'');
 }
+/* v12: the dashboard login also survives a refresh (this tab only; cleared by Log out, after 2 hours without a refresh, or when the tab is closed) */
+var dashRes=false;
+function dashSave(){if(!dsC||!dpP)return;try{sessionStorage.setItem('envDash',JSON.stringify({c:dsC,p:dpP,t:Date.now()}))}catch(e){}}
+function restoreDash(){
+  var sv=null;try{sv=JSON.parse(sessionStorage.getItem('envDash')||'null')}catch(e){}
+  if(!sv||!sv.c||!sv.p)return;
+  if(Date.now()-(sv.t||0)>7200000){try{sessionStorage.removeItem('envDash')}catch(e2){}return}
+  dsC=sv.c;dpP=sv.p;dashRes=true;render();loadDash('');
+}
 function loadDash(d,quiet){
   if(busy&&!quiet)return;if(!quiet)setBusy(true);
-  google.script.run.withSuccessHandler(function(r){busy=false;dash=r;msg='';kind='';
-      if(!dashT)dashT=setInterval(function(){if(dash&&!busy&&!document.hidden)loadDash('',true)},30000);render()})
-    .withFailureHandler(function(e){if(quiet)return;busy=false;if(!dash){dsC='';dpP=''}msg='Error: '+((e&&e.message)||e);kind='err';render()}).envelopeDashboard(dsC,dpP,d||(dash&&dash.date)||'');
+  google.script.run.withSuccessHandler(function(r){busy=false;dashRes=false;dash=r;msg='';kind='';dashSave();
+      if(!dashT)dashT=setInterval(function(){if(dash&&!busy&&!document.hidden)loadDash('',true)},20000);render()})
+    .withFailureHandler(function(e){if(quiet)return;busy=false;dashRes=false;var em=(e&&e.message)||String(e);if(!dash){dsC='';dpP='';if(/Wrong employee code|Too many/.test(em)){try{sessionStorage.removeItem('envDash')}catch(x){}}}msg='Error: '+em;kind='err';render()}).envelopeDashboard(dsC,dpP,d||(dash&&dash.date)||'');
 }
 function dashLogin(){
   if(busy)return;grab();
   if(!S.ds.trim()||!S.dp.trim()){msg='Enter your employee code and PIN.';kind='err';render();return}
   dsC=S.ds.trim();dpP=S.dp;S.dp='';loadDash('');
 }
-function dashOut(){clearInterval(dashT);dashT=null;dash=null;dsC='';dpP='';S.dp='';msg='';kind='';render()}
+function dashOut(){clearInterval(dashT);dashT=null;dash=null;dashRes=false;dsC='';dpP='';S.dp='';msg='';kind='';try{sessionStorage.removeItem('envDash')}catch(e){}render()}
 function pct(a,b){return b?Math.round(a*100/b):0}
 function ringSvg(p){var r=44,c=2*Math.PI*r;return '<svg width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="'+p+' percent verified"><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="#8fe3b5" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*p/100)+' '+c+'" transform="rotate(-90 56 56)"/><text x="56" y="63" text-anchor="middle" font-size="24" font-weight="700" fill="#fff">'+p+'%</text></svg>'}
 function dashScreen(){
   var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!dash&&dashRes)return h+skel();
   if(!dash)return h+'<h2>Executive Dashboard</h2><div class="sub">Exam Office and management only.</div><div class="box"><label for="f_ds" style="margin-top:0">Your employee code</label><input id="f_ds" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ds)+'">'
     +'<label for="f_dp">Your PIN</label><input id="f_dp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
     +'<button id="go" onclick="dashLogin()">Open dashboard</button></div>';
-  return h+dashHtml()+'<button class="lnk" onclick="dashOut()">Log out</button>';
+  return h+dashHtml()+'<div class="two"><button class="lnk" onclick="dashOut()">Log out</button><a class="lnk" style="display:block;text-align:center;text-decoration:none" href="?a='+enc(A)+'">&#8249; Back to Home</a></div>';
 }
 function slotState(x){
   if(x.done===x.total&&x.total)return '<span class="pill p-ok">Complete</span>';
@@ -371,7 +399,7 @@ function dashHtml(){
   var t=dash.totals,c=dash.cycle,p=pct(t.done,t.total);
   var recv=t.total-t.todo,retd=t.ret+t.chk+t.done,chkd=t.chk+t.done;
   var absP=t.seatedRet?(t.absent*100/t.seatedRet).toFixed(1):'0.0';
-  var h='<h2>Executive Dashboard</h2><div class="sub">'+esc(dash.label)+' &middot; updated '+esc(dash.at)+' &middot; refreshes every 30 s</div>';
+  var h='<h2>Executive Dashboard</h2><div class="sub">'+esc(dash.label)+' &middot; updated '+esc(dash.at)+' &middot; refreshes every 20 s</div>';
   h+='<label for="f_dd">Exam date</label><select id="f_dd" onchange="loadDash(this.value)">';
   dash.dates.forEach(function(x){h+='<option value="'+esc(x.dk)+'"'+(x.dk===dash.date?' selected':'')+'>'+esc(x.label)+'</option>'});
   h+='</select>';
@@ -396,62 +424,149 @@ function dashHtml(){
   return h+'</div>';
 }
 /* ---- Exam Office Receiving Desk (?x=1): log in once, receive everything that was returned in one go ---- */
-var desk=null,xC='',xP='',dsel={},vsel={},dtab='ok',dfil='',deskT=null,deskIdle=null;
-function deskTouch(){clearTimeout(deskIdle);deskIdle=setTimeout(function(){deskOut('Logged out after 10 minutes without use.')},600000)}
-function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;xC='';xP='';dsel={};vsel={};dtab='ok';S.xp='';msg=m||'';kind=m?'err':'';render()}
+/* v12: the login survives a page refresh (this browser tab only; cleared by Log out, 10 minutes without use, or closing the tab) */
+var desk=null,xC='',xP='',dsel={},vsel={},dtab='ok',dfil='',dq='',dsort='old',tch=[],deskT=null,deskIdle=null,deskRes=false,lastSlot='',lastBody='';
+var DESK_IDLE=600000;
+function deskSave(){if(!xC||!xP)return;try{sessionStorage.setItem('envDesk',JSON.stringify({c:xC,p:xP,t:Date.now(),tab:dtab,q:dq,f:dfil,s:dsort}))}catch(e){}}
+function deskTouch(){clearTimeout(deskIdle);deskIdle=setTimeout(function(){deskOut('Logged out after 10 minutes without use.')},DESK_IDLE);deskSave()}
+function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;deskRes=false;xC='';xP='';dsel={};vsel={};dtab='ok';dfil='';dq='';dsort='old';S.xp='';lastSlot='';lastBody='';
+  try{sessionStorage.removeItem('envDesk')}catch(e){}
+  msg=m||'';kind=m?'err':'';render()}
 function deskLogin(){
   if(busy)return;grab();
   if(!S.xs.trim()||!S.xp.trim()){msg='Enter your Exam Office employee code and PIN.';kind='err';render();return}
   xC=S.xs.trim();xP=S.xp;S.xp='';loadDesk(false,true);
 }
+function restoreDesk(){
+  var sv=null;try{sv=JSON.parse(sessionStorage.getItem('envDesk')||'null')}catch(e){}
+  if(!sv||!sv.c||!sv.p)return;
+  if(Date.now()-(sv.t||0)>=DESK_IDLE){try{sessionStorage.removeItem('envDesk')}catch(e2){}msg='Logged out after 10 minutes without use.';kind='err';render();return}
+  xC=sv.c;xP=sv.p;dtab=sv.tab==='chk'?'chk':'ok';dq=sv.q||'';dfil=sv.f||'';dsort=sv.s||'old';
+  deskRes=true;render();loadDesk(false,false);   /* nothing is ticked after a refresh */
+}
 function loadDesk(quiet,first){
   if(quiet&&busy)return;if(!quiet)setBusy(true);
   google.script.run.withSuccessHandler(function(r){
     if(!quiet){busy=false;deskTouch()}
-    desk=r;
-    if(first){msg='';kind='';dsel={};r.items.forEach(function(x){if(!x.mis)dsel[x.id]=1})}   /* clean ones are ticked; envelopes with a count problem are left for a human look */
+    deskRes=false;desk=r;
+    if(first){msg='';kind='';dsel={};r.items.forEach(function(x){if(!x.mis)dsel[x.id]=1})}   /* clean ones are ticked on a fresh login; envelopes with a count problem are left for a human look */
     else Object.keys(dsel).forEach(function(id){if(!r.items.some(function(x){return x.id===id}))delete dsel[id]});
     Object.keys(vsel).forEach(function(id){if(!(r.chk||[]).some(function(x){return x.id===id}))delete vsel[id]});
-    if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},20000);
-    render();
+    if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},10000);
+    if(quiet&&$('dbody'))renderDeskBody();else render();   /* the 20 s refresh only redraws the list, so typing in the search box is never interrupted */
   }).withFailureHandler(function(e){
-    if(quiet)return;busy=false;if(!desk){xC='';xP=''}
-    msg='Error: '+((e&&e.message)||e);kind='err';render();
+    var em=(e&&e.message)||String(e);
+    if(quiet){var t=$('dat');if(t)t.textContent='could not update, retrying';return}
+    busy=false;deskRes=false;
+    if(!desk){xC='';xP='';if(/Wrong employee code|Too many/.test(em)){try{sessionStorage.removeItem('envDesk')}catch(x){}}}
+    msg='Error: '+em;kind='err';render();
   }).envelopeDeskList(xC,xP);
 }
-function vis(l){var o=[];(l||(desk?desk.items:[])).forEach(function(x,i){if(!dfil||(x.dk+'|'+x.slot)===dfil)o.push(i)});return o}
-function setDfil(v){grab();dfil=v;deskTouch();render()}
-function dtg(i,c){var x=desk.items[i];if(c)dsel[x.id]=1;else delete dsel[x.id];deskTouch();var n=Object.keys(dsel).length;var b=$('dbtn');if(b)b.textContent='Envelope received: OK ('+n+')';updBar()}
-function dAll(){grab();vis().forEach(function(i){var x=desk.items[i];if(!x.mis)dsel[x.id]=1});deskTouch();render()}
-function dNone(){grab();dsel={};deskTouch();render()}
-function setDtab(t){grab();dtab=t;dfil='';deskTouch();render()}
-function vtg(i,c){var x=desk.chk[i];if(c)vsel[x.id]=1;else delete vsel[x.id];deskTouch();var n=Object.keys(vsel).length;var b=$('dbtn');if(b)b.textContent='Award list received: Verify ('+n+')';updBar()}
-function vAll(){grab();vis(desk.chk).forEach(function(i){var x=desk.chk[i];if(!x.mis)vsel[x.id]=1});deskTouch();render()}
-function vNone(){grab();vsel={};deskTouch();render()}
+function refreshNow(){if(busy||!desk)return;var t=$('dat');if(t)t.textContent='updating...';deskTouch();loadDesk(true)}
+function curList(){return dtab==='chk'?(desk.chk||[]):desk.items}
+function curSel(){return dtab==='chk'?vsel:dsel}
+function hayOf(x){return [x.emp,x.by,x.code,x.title,x.program,x.room,x.date,x.slot,x.inv,x.ins].join(' ').toLowerCase()}
+/* indexes of the rows that pass the slot filter and the search words, in the chosen order */
+function vis(l){
+  l=l||curList();var tk=dq.toLowerCase().split(/[\s,;]+/).filter(Boolean),o=[];
+  l.forEach(function(x,i){
+    if(dfil&&(x.dk+'|'+x.slot)!==dfil)return;
+    var h=hayOf(x);for(var j=0;j<tk.length;j++)if(h.indexOf(tk[j])<0)return;
+    o.push(i)});
+  if(dsort==='new')o.sort(function(a,b){return l[b].ts-l[a].ts});
+  else if(dsort==='teacher')o.sort(function(a,b){return String(l[a].by).localeCompare(String(l[b].by))||l[a].ts-l[b].ts});
+  else if(dsort==='room')o.sort(function(a,b){return String(l[a].room).localeCompare(String(l[b].room),undefined,{numeric:true})});
+  else o.sort(function(a,b){return l[a].ts-l[b].ts});
+  return o}
+/* a ticked envelope that is no longer on screen is un-ticked, so a bulk action can only touch what the receiver sees */
+function pruneSel(){var l=curList(),ok={},s=curSel();vis(l).forEach(function(i){ok[l[i].id]=1});Object.keys(s).forEach(function(id){if(!ok[id])delete s[id]})}
+function fixFil(){if(!desk)return;if(dfil&&!curList().some(function(x){return x.dk+'|'+x.slot===dfil}))dfil=''}
+function ageTxt(ts){if(!ts)return '';var m=Math.max(0,Math.round((Date.now()-ts)/60000));return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' m'}
+function setDq(v){dq=v;deskTouch();pruneSel();renderDeskBody()}
+function setDsort(v){dsort=v;deskTouch();renderDeskBody()}
+function setDfil(v){dfil=v;deskTouch();pruneSel();renderDeskBody()}
+function pickT(i){dq=i<0?'':String(tch[i].key);var e=$('f_dq');if(e)e.value=dq;deskTouch();pruneSel();renderDeskBody()}
+function setDtab(t){dtab=t;dfil='';dsel={};vsel={};deskTouch();renderDeskBody()}
+function dtg(id,c){var s=curSel();if(c)s[id]=1;else delete s[id];deskTouch();var t=$('dtick');if(t)t.textContent=Object.keys(s).length;updBar()}
+function deskAll(){var l=curList(),s=curSel();vis(l).forEach(function(i){if(!l[i].mis)s[l[i].id]=1});deskTouch();renderDeskBody()}
+function deskNone(){if(dtab==='chk')vsel={};else dsel={};deskTouch();renderDeskBody()}
+/* only the parts that changed are redrawn, so an open drop-down or the chip scroll position is not disturbed by the 20 s refresh */
+function renderDeskBody(){
+  var a=$('dtabs'),b=$('dbody'),sl=$('dslot');if(!desk||!a||!b||!sl){render();return}
+  fixFil();
+  a.innerHTML=deskTabsHtml();
+  var s=deskSlotHtml();if(s!==lastSlot){sl.innerHTML=s;lastSlot=s}
+  var h=deskBodyHtml();if(h!==lastBody){b.innerHTML=h;lastBody=h}
+  var t=$('dat');if(t)t.textContent='updated '+desk.at;
+  updBar();
+}
+function deskTabsHtml(){
+  var C=dtab==='chk',it=desk.items,ck=desk.chk||[],bad=0,oldest=0;
+  it.forEach(function(x){if(x.mis)bad++;if(x.ts&&(!oldest||x.ts<oldest))oldest=x.ts});
+  return '<div class="kpis">'
+    +'<div class="kpi warn2"><div class="k">Waiting for OK</div><div class="n">'+it.length+'</div><div class="s">'+(oldest?'Longest wait: '+esc(ageTxt(oldest)):'Nothing waiting')+'</div></div>'
+    +'<div class="kpi '+(bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+bad+'</div><div class="s">'+(bad?'Not ticked for you':'All counts match')+'</div></div>'
+    +'<div class="kpi info"><div class="k">Checked, award list pending</div><div class="n">'+ck.length+'</div><div class="s">Verify when the list is in hand</div></div></div>'
+    +'<div class="tabs"><button class="'+(!C?'on':'')+'" onclick="setDtab(\'ok\')">Waiting for OK ('+it.length+')</button><button class="'+(C?'on':'')+'" onclick="setDtab(\'chk\')">Checked ('+ck.length+')</button></div>';
+}
+function deskSlotHtml(){
+  var L=curList(),seen={},keys=[],opts='<option value="">All dates and slots ('+L.length+')</option>';
+  L.forEach(function(x){var k=x.dk+'|'+x.slot;if(!seen[k]){seen[k]={x:x,n:0};keys.push(k)}seen[k].n++});
+  keys.sort(function(a,b){return a<b?-1:a>b?1:0});
+  keys.forEach(function(k){var e=seen[k];opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(e.x.date+' - '+e.x.slot)+' ('+e.n+')</option>'});
+  return '<label for="f_xf">Slot</label><select id="f_xf" onchange="setDfil(this.value)">'+opts+'</select>';
+}
+function deskBodyHtml(){
+  var C=dtab==='chk',L=curList(),s=curSel(),h='',v=vis(L),bad=0,late=0;
+  v.forEach(function(i){if(L[i].mis)bad++;if(L[i].ts&&(Date.now()-L[i].ts)>=2700000)late++});
+  /* one chip per teacher (employee code), inside the chosen slot */
+  var g={},order=[];
+  L.forEach(function(x){if(dfil&&(x.dk+'|'+x.slot)!==dfil)return;var key=x.emp||x.by||'?';if(!g[key]){g[key]={key:key,name:x.by,emp:x.emp,n:0};order.push(key)}g[key].n++});
+  tch=order.map(function(k){return g[k]}).sort(function(a,b){return b.n-a.n}).slice(0,15);
+  var cur=dq.trim().toLowerCase();
+  h+='<div class="box"><b>'+v.length+(v.length===L.length?'':' of '+L.length)+(C?' checked envelope':' envelope')+(L.length===1?'':'s')+(C?' waiting for the award list':' waiting for your OK')+'</b>'
+    +'<div class="dsum"><span>Ticked <b id="dtick">'+Object.keys(s).length+'</b></span>'+(bad?'<span style="color:#b3261e">Count problem <b style="color:#b3261e">'+bad+'</b></span>':'')+(late?'<span style="color:#b3261e">Waiting 45 min+ <b style="color:#b3261e">'+late+'</b></span>':'')+'</div>'
+    +'<div class="hint" style="margin:6px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.')+'</div>';
+  if(tch.length>1){
+    h+='<div class="hint" style="margin-top:10px">Teachers (tap to show only theirs)</div><div class="chips"><button class="chip'+(cur?'':' on')+'" onclick="pickT(-1)">All teachers</button>';
+    tch.forEach(function(t,i){h+='<button class="chip'+(cur&&cur===String(t.key).toLowerCase()?' on':'')+'" onclick="pickT('+i+')">'+esc((t.name||t.key)+(t.emp?' ('+t.emp+')':''))+' <small>'+t.n+'</small></button>'});
+    h+='</div>';
+  }
+  h+='<div class="two"><button class="lnk" onclick="deskAll()">Select all shown (no problem)</button><button class="lnk" onclick="deskNone()">Clear selection</button></div></div>';
+  if(!v.length)h+='<div class="empty">'+(L.length?'Nothing matches this search or slot.':(C?'No checked envelope is waiting for the award list.':'Nothing is waiting. New returns appear here by themselves.'))+'</div>';
+  h+='<div class="dgrid">';
+  v.forEach(function(i){var x=L[i],on=s[x.id],age=ageTxt(x.ts),old=x.ts&&(Date.now()-x.ts)>=2700000;
+    h+='<div class="rw"><input type="checkbox" id="dc'+i+'" aria-label="Select envelope" '+(on?'checked ':'')+'onchange="dtg(\''+esc(x.id)+'\',this.checked)"><label for="dc'+i+'" class="dr'+(x.mis?' bad':(old?' late':''))+'"><b>'+esc(x.title)+'</b>'
+      +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
+      +'<span>'+(C?'Checked by ':'Returned by ')+'<b class="who" style="display:inline">'+esc(x.by||'-')+'</b>'+(x.emp?' ('+esc(x.emp)+')':'')+'</span>'
+      +(C?'<span><b style="display:inline">Checked '+esc(x.cbooks)+' of '+esc(x.filled)+' filled books</b> ('+esc(x.absent)+' absent, seated '+esc(x.seated)+'), '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts do not match (checked / filled / absent / seated). Look at it before verifying.</div>':'')
+        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent'+(x.mq?' + '+esc(x.mq)+' UMC':'')+'</b> (seated '+esc(x.seated)+'), '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':''))
+      +(age?'<span class="age'+(old?' late':'')+'">Waiting '+esc(age)+'</span>':'')+'</label></div>'});
+  return h+'</div>';
+}
 function deskScreen(){
   var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!desk&&deskRes)return h+skel();
   if(!desk)return h+'<h2>Receiving Desk</h2><div class="sub">Exam Office receiver only. Log in once, then receive returned envelopes and verify checked ones in one go.</div><div class="box"><label for="f_xs" style="margin-top:0">Your employee code</label><input id="f_xs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.xs||'')+'">'
     +'<label for="f_xp">Your PIN</label><input id="f_xp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
     +'<button id="go" onclick="deskLogin()">Open receiving desk</button></div>';
-  var C=dtab==='chk',chk=desk.chk||[],L=C?chk:desk.items,seen={},opts='<option value="">All dates and slots ('+L.length+')</option>';
-  L.forEach(function(x){var k=x.dk+'|'+x.slot;if(seen[k])return;seen[k]=1;var n=0;L.forEach(function(y){if(y.dk+'|'+y.slot===k)n++});opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(x.date+' - '+x.slot)+' ('+n+')</option>'});
-  var v=vis(L);
-  h+='<h2>Receiving Desk</h2><div class="sub">Logged in as '+esc(xC)+' &middot; updated '+esc(desk.at)+' &middot; refreshes every 20 s</div>';
-  h+='<div class="tabs"><button class="'+(!C?'on':'')+'" onclick="setDtab(\'ok\')">Waiting for OK ('+desk.items.length+')</button><button class="'+(C?'on':'')+'" onclick="setDtab(\'chk\')">Checked ('+chk.length+')</button></div>';
-  h+='<div class="box"><b>'+L.length+(C?' checked envelope'+(L.length===1?'':'s')+' waiting for the award list':' envelope'+(L.length===1?'':'s')+' waiting for your OK')+'</b>'
-    +'<div class="hint" style="margin:2px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.')+'</div>'
-    +'<label for="f_xf">Show</label><select id="f_xf" onchange="setDfil(this.value)">'+opts+'</select>'
-    +'<div class="two"><button class="lnk" onclick="'+(C?'vAll()':'dAll()')+'">Select all (no problem)</button><button class="lnk" onclick="'+(C?'vNone()':'dNone()')+'">Clear selection</button></div></div>';
-  if(!v.length)h+='<div class="empty">'+(L.length?'Nothing here for this slot.':(C?'No checked envelope is waiting for the award list.':'Nothing is waiting. New returns appear here by themselves.'))+'</div>';
-  v.forEach(function(i){var x=L[i],on=C?vsel[x.id]:dsel[x.id];
-    h+='<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(on?'checked ':'')+'onchange="'+(C?'vtg':'dtg')+'('+i+',this.checked)"><label class="dr'+(x.mis?' bad':'')+'"><b>'+esc(x.title)+'</b>'
-      +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
-      +(C?'<span><b style="display:inline">Checked '+esc(x.cbooks)+' of '+esc(x.filled)+' filled books</b> ('+esc(x.absent)+' absent, seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
-         +(x.mis?'<div class="warn">Counts do not match (checked / filled / absent / seated). Look at it before verifying.</div>':'')
-        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent'+(x.mq?' + '+esc(x.mq)+' UMC':'')+'</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
-         +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':''))+'</label></div>'});
-  return h+'<button class="lnk" onclick="deskOut()">Log out</button>';
+  fixFil();
+  lastSlot=deskSlotHtml();lastBody=deskBodyHtml();
+  h+='<h2>Receiving Desk</h2><div class="sub">Logged in as '+esc(xC)+' &middot; <span id="dat">updated '+esc(desk.at)+'</span> &middot; refreshes every 10 s &middot; <a href="#" onclick="refreshNow();return false" style="color:var(--g);font-weight:600">Refresh now</a></div>';
+  h+='<div id="dtabs">'+deskTabsHtml()+'</div>';
+  h+='<div class="box"><div class="dtool"><div><label for="f_dq" style="margin-top:0">Search by teacher employee code, name, course, room</label>'
+    +'<input id="f_dq" type="search" autocomplete="off" autocapitalize="off" placeholder="e.g. 111335, Arooba, CS-101, I-101" value="'+esc(dq)+'" oninput="setDq(this.value)"></div>'
+    +'<div id="dslot">'+lastSlot+'</div>'
+    +'<div><label for="f_dsort" style="margin-top:0">Sort</label><select id="f_dsort" onchange="setDsort(this.value)">'
+    +'<option value="old"'+(dsort==='old'?' selected':'')+'>Waiting longest first</option><option value="new"'+(dsort==='new'?' selected':'')+'>Newest first</option>'
+    +'<option value="teacher"'+(dsort==='teacher'?' selected':'')+'>By teacher</option><option value="room"'+(dsort==='room'?' selected':'')+'>By room</option></select></div></div></div>';
+  h+='<div id="dbody">'+lastBody+'</div>';
+  return h+'<div class="two"><button class="lnk" onclick="deskOut()">Log out</button><a class="lnk" style="display:block;text-align:center;text-decoration:none" href="?a='+enc(A)+'">&#8249; Back to Home</a></div>';
 }
+/* any tap or key press counts as use, so the 10 minute logout only happens when nobody touches the screen */
+['pointerdown','keydown'].forEach(function(ev){document.addEventListener(ev,function(){if(desk)deskTouch()},true)});
 function deskVerify(){
   if(busy)return;
   var ids=Object.keys(vsel);if(!ids.length){say('Tick at least one envelope.','err');return}
@@ -541,7 +656,7 @@ function goHome(){
 function loadInfo(){
   var id=ID,k=KEY,c=null;
   try{c=JSON.parse(sessionStorage.getItem('envI:'+id)||'null')}catch(e){}
-  if(c&&c.found&&!c.denied){setInfo(c);stale=true}else{o=null;stale=false}
+  if(c&&c.found&&!c.denied&&c._t&&Date.now()-c._t<15000){delete c._t;setInfo(c,true);stale=true}else{o=null;stale=false}   /* an older copy is never shown: strength corrections must appear at once */
   render();
   google.script.run.withSuccessHandler(function(r){
     if(id!==ID)return;
@@ -553,6 +668,26 @@ function loadInfo(){
     $('app').innerHTML='<div class="box"><h2>Error</h2><p>'+esc(e.message)+'</p><button onclick="loadInfo()">Try again</button></div>';
   }).envelopeScanInfo(id,k);
 }
+
+/* ---- the envelope page follows the sheet: a strength correction (or any other change) appears without reloading ---- */
+function pollInfo(){
+  if(busy||stale||!ID||!o||!o.found||document.hidden)return;
+  var id=ID,k=KEY;
+  google.script.run.withSuccessHandler(function(r){
+    if(id!==ID||busy||!o||!r||!r.found)return;
+    if(JSON.stringify(o)===JSON.stringify(r))return;
+    cacheInfo(id,r);
+    var seatChg=String(r.seated)!==String(o.seated),ae=document.activeElement,typing=!!(ae&&(ae.tagName==='INPUT'||ae.tagName==='SELECT'));
+    if(r.stage!==o.stage){grab();setInfo(r);msg='This envelope was updated by someone else.';kind='ok';render();return}
+    if(typing){o.seated=r.seated;o.status=r.status;syncRes(r);live();return}   /* do not disturb typing; the check line already uses the new strength */
+    grab();syncRes(r);o=r;if(seatChg){msg='Student strength was updated to '+r.seated+'.';kind='ok'}render();
+  }).withFailureHandler(function(){}).envelopeScanInfo(id,k);
+}
+setInterval(pollInfo,20000);
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)return;
+  if(ID&&o)pollInfo();else if(DESK&&desk)loadDesk(true);else if(DM&&dash)loadDash('',true);
+});
 /* ---- home page: find an envelope without its QR ---- */
 var sel={},sel2={},SC={};
 function cardHtml(r,i){
@@ -670,13 +805,13 @@ function homeScreen(){
   return s+idBox(f)+(eState==='found'?resultsHtml():'');
 }
 function quick(d){var q=$('f_q'),e=$('f_d');if(q)q.value='';if(e)e.value=d;doSearch()}
-/* a search done in the last 40 seconds is shown from memory (instant); "Refresh list" or any action always asks the server again */
+/* the same search done in the last 5 seconds is shown from memory (instant); "Refresh list" or any action always asks the server again */
 function doSearch(auto,force){
   if(!auto)grab();var q=S.q.trim(),m=/[?&]e=([^&\s#]+)/.exec(q);
   if(m){var k=/[?&]k=([^&\s#]+)/.exec(q);location.href='?e='+m[1]+(k?'&k='+k[1]:'')+'&a='+enc(A);return}
   var key=q+'|'+S.d,c=SC[key];
   function show(r){res=r;searched=true;filt='all';msg='';kind='';try{sessionStorage.setItem('envQ',JSON.stringify({q:S.q,d:S.d}))}catch(e3){}note=(!q&&!S.d&&r.length)?'Showing the next exam date: '+r[0].date+'. Type a word or pick a date to search elsewhere.':'';render()}
-  if(!force&&c&&Date.now()-c.t<40000){show(c.r);return}
+  if(!force&&c&&Date.now()-c.t<5000){show(c.r);return}
   setBusy(true);
   google.script.run.withSuccessHandler(function(r){busy=false;SC[key]={t:Date.now(),r:r};show(r)}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
 }
@@ -706,6 +841,9 @@ function render(){
   var e=$('f_emp');if(e){e.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eLookup()}};if(!e.value){try{e.focus()}catch(x){}}}
   var t=$('f_tn');if(t)t.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eRegister()}};
   var q=$('f_q');if(q)q.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();q.blur();doSearch()}};
+  var xs=$('f_xs');if(xs)xs.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();var p=$('f_xp');if(p)p.focus()}};
+  var xp=$('f_xp');if(xp)xp.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();deskLogin()}};
+  var tn=$('tn');if(tn)tn.innerHTML=(!ID&&(DESK||DM))?'<a href="?a='+enc(A)+'">&#8249; Home</a>'+(DESK?'<a href="?d=1&a='+enc(A)+'">Dashboard</a>':'<a href="?x=1&a='+enc(A)+'">Receiving Desk</a>'):'';
   updBar();
 }})();
 function act(a){
@@ -754,5 +892,7 @@ function restoreSearch(){try{var sv=JSON.parse(sessionStorage.getItem('envQ')||'
   }
   if(ID&&A)loadInfo();
   else if(!known)render();
+  if(!ID&&DESK)restoreDesk();
+  if(!ID&&DM)restoreDash();
 })();
 </script></body></html>
