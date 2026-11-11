@@ -96,7 +96,7 @@ var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
 var emp='',empName='',empNote='',eState='',eCan=false;
-var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ds:'',dp:''};
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ms:'',mp:'',mq:'0',ds:'',dp:''};
 /* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
 var FS=Q.get('s')==='1',rem=true;
 try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
@@ -111,7 +111,7 @@ function say(m,k){msg=m;kind=k||'';render();window.scrollTo(0,0)}
 function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
 function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
 function syncRes(r){if(r&&r.found&&r.status&&res)res.forEach(function(x){if(x.id===r.id)x.status=r.status})}
-function setInfo(r){syncRes(r);o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent)}
+function setInfo(r){syncRes(r);o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
   try{if(r&&r.found&&ID)sessionStorage.setItem('envI:'+ID,JSON.stringify(r))}catch(e){}}
 function skel(){return '<div class="sk" style="height:22px;width:60%;margin:18px 0 8px"></div><div class="sk" style="height:38px;margin:12px 0"></div><div class="sk" style="height:200px;margin:12px 0"></div><div class="sk" style="height:140px"></div>'}
 function blocked(){if(stale){say('Updating this envelope, try again in a moment.','err');return true}return false}
@@ -155,17 +155,15 @@ function idBox(inner){
 function live(){
   if(!o)return;grab();
   var el=$('chk');
-  if(el){var n=S.n,a=S.a;if(n===''){el.className='chk';el.textContent=''}else{var t=Number(n)+(a===''?0:Number(a));
-    if(t===Number(o.seated)){el.className='chk good';el.textContent=n+' filled + '+(a||0)+' absent = '+t+' (matches '+o.seated+' seated)'}
-    else{el.className='chk bad';el.textContent=n+' filled + '+(a||0)+' absent = '+t+', but '+o.seated+' seated. Will be flagged.'}}}
-  var e2=$('chk2');
-  if(e2){if(S.m===''){e2.className='chk';e2.textContent=''}else if(Number(S.m)===Number(o.sheets)){e2.className='chk good';e2.textContent=S.m+' checked = '+o.sheets+' filled books returned'}
-    else{e2.className='chk bad';e2.textContent=S.m+' checked, but '+o.sheets+' filled books were returned. Will be flagged.'}}
+  if(el){var n=S.n,a=S.a;if(n===''){el.className='chk';el.textContent=''}else{var q=(S.mq===''||isNaN(Number(S.mq)))?0:Number(S.mq),t=Number(n)+(a===''?0:Number(a))+q,tx=n+' filled + '+(a||0)+' absent'+(q?' + '+q+' UMC':'');
+    if(t===Number(o.seated)){el.className='chk good';el.textContent=tx+' = '+t+' (matches '+o.seated+' seated)'}
+    else{el.className='chk bad';el.textContent=tx+' = '+t+', but '+o.seated+' seated. Will be flagged.'}}}
 }
 function countForm(btnText){
   return '<div class="two"><div><label for="f_n">Filled books returned</label><input id="f_n" type="number" inputmode="numeric" min="0" value="'+esc(S.n)+'" oninput="live()"></div>'
     +'<div><label for="f_a">Students absent</label><input id="f_a" type="number" inputmode="numeric" min="0" value="'+esc(S.a)+'" oninput="live()"></div></div>'
-    +'<div class="hint">Filled means used, not blank.</div><div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+btnText+'</button>';
+    +'<label for="f_mq">UMC cases (book not in envelope)</label><input id="f_mq" type="number" inputmode="numeric" min="0" value="'+esc(S.mq)+'" oninput="live()">'
+    +'<div class="hint">Filled means used, not blank. If the book of a student was taken for an Unfair Means Case (UMC) and is not in this envelope, enter how many (else leave 0). Filled + absent + UMC = seated.</div><div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+btnText+'</button>';
 }
 function stageBox(){
   var st=o.stage;
@@ -174,7 +172,7 @@ function stageBox(){
     var w='';
     if(Number(o.sheets)+(Number(o.absent)||0)!==Number(o.seated))w+='<div class="warn">Returned counts do not match: '+esc(o.sheets)+' filled + '+esc(o.absent)+' absent, but '+esc(o.seated)+' seated.</div>';
     if(o.markedBooks!==''&&o.markedBooks!=null&&Number(o.markedBooks)!==Number(o.sheets))w+='<div class="warn">Checked books ('+esc(o.markedBooks)+') do not match filled books returned ('+esc(o.sheets)+').</div>';
-    return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. The teacher has checked the papers, but this envelope is NOT final until the award list is received.</div>'+w
+    return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. '+'The teacher has checked the papers, but '+'this envelope is NOT final until the award list is received.</div>'+w
       +'<label for="f_st">Your employee code</label><input id="f_st" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.st)+'">'
       +'<label for="f_pin">Your PIN</label><input id="f_pin" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.pin)+'">'
       +'<button id="go" onclick="act(\'verify\')">Award list received: verify</button></div>';
@@ -198,10 +196,10 @@ function seatBox(){
     +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
 }
 function acceptBox(){
-  var r=o.req||{},mis=Number(r.filled)+(Number(r.absent)||0)!==Number(o.seated);
+  var r=o.req||{},rq=Number(r.mcq)||0,mis=Number(r.filled)+(Number(r.absent)||0)+rq!==Number(o.seated);
   return '<div class="box"><div class="hint" style="margin:0 0 6px"><b>Waiting for the Exam Office to confirm.</b> Invigilator: hand this envelope to the Exam Office. It is final only after the Exam Office receiver taps OK.</div>'
-    +row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent')+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
-    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent, but '+esc(o.seated)+' seated.</div>':'')
+    +row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':''))+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
+    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(o.seated)+' seated.</div>':'')
     +'<div class="hint" style="margin:10px 0 0"><b>Exam Office receiver only:</b></div>'
     +'<label for="f_rs">Your employee code</label><input id="f_rs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.rs)+'">'
     +'<label for="f_rp">Your PIN</label><input id="f_rp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
@@ -392,7 +390,7 @@ function deskScreen(){
       +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
       +(C?'<span><b style="display:inline">Checked '+esc(x.cbooks)+' of '+esc(x.filled)+' filled books</b> ('+esc(x.absent)+' absent, seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
          +(x.mis?'<div class="warn">Counts do not match (checked / filled / absent / seated). Look at it before verifying.</div>':'')
-        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
+        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent'+(x.mq?' + '+esc(x.mq)+' UMC':'')+'</b> (seated '+esc(x.seated)+') by '+esc(x.by)+', '+esc(x.at)+'</span>'
          +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':''))+'</label></div>'});
   return h+'<button class="lnk" onclick="deskOut()">Log out</button>';
 }
@@ -641,7 +639,7 @@ function render(){
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
-    +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books':''))+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
+    +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books'+'':''))+(o.mcqN?row('UMC cases (book not in envelope)',String(o.mcqN)):'')+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
   s+=stageBox()+undoBox()+seatBox()+'<a class="lk" onclick="goHome();return false" href="?a='+esc(A)+'">Search another envelope</a>';
   Ap.innerHTML=s;live();
 }
@@ -654,13 +652,14 @@ function render(){
 }})();
 function act(a){
   if(busy||blocked())return;grab();
-  var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,staff:S.st.trim(),pin:S.pin};
+  var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,mcq:S.mq,staff:S.st.trim(),pin:S.pin};
   function bad(x){return x===''||isNaN(Number(x))||Number(x)<0}
   if(a!=='verify'&&eState!=='found'){say('Enter your employee code and tap Continue first.','err');return}
   if(a==='return'&&bad(S.n)){say('Enter the number of FILLED answer books returned (0 or more).','err');return}
   if(a==='return'&&S.a!==''&&bad(S.a)){say('Students absent must be 0 or more.','err');return}
   if(a==='return'&&!o.returned&&!confirm('Submit these counts and hand this envelope to the Exam Office now? It becomes final only after the Exam Office receiver confirms. If the envelope is still in the room, tap Cancel.'))return;
   if(a==='mark'&&bad(S.m)){say('Enter how many answer books were CHECKED (0 or more).','err');return}
+  if(a==='return'&&S.mq!==''&&bad(S.mq)){say('UMC cases must be 0 or more.','err');return}
   if(a==='mark'&&Number(S.m)!==Number(o.sheets)&&!confirm('You entered '+S.m+' checked, but '+o.sheets+' filled books were returned. This will be flagged. Continue?'))return;
   if(a==='verify'&&(!p.staff||!p.pin.trim())){say('Enter your employee code and PIN.','err');return}
   if(a==='verify'&&!confirm('Verify this envelope? The award list has been received and this is final.'))return;
