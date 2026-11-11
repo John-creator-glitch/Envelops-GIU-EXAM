@@ -467,7 +467,7 @@ function loadDesk(quiet,first){
   google.script.run.withSuccessHandler(function(r){
     if(!quiet){busy=false;deskTouch()}
     deskRes=false;desk=r;
-    if(first){msg='';kind='';dsel={};r.items.forEach(function(x){if(!x.mis)dsel[x.id]=1})}   /* clean ones are ticked on a fresh login; envelopes with a count problem are left for a human look */
+    if(first){msg='';kind='';dsel={}}   /* nothing is ticked for the receiver: tick the envelopes you hold, or use Select all shown */
     else Object.keys(dsel).forEach(function(id){if(!r.items.some(function(x){return x.id===id}))delete dsel[id]});
     Object.keys(vsel).forEach(function(id){if(!(r.chk||[]).some(function(x){return x.id===id}))delete vsel[id]});
     if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},10000);
@@ -523,7 +523,7 @@ function deskTabsHtml(){
   it.forEach(function(x){if(x.mis)bad++;if(x.ts&&(!oldest||x.ts<oldest))oldest=x.ts});
   return '<div class="kpis">'
     +'<div class="kpi warn2"><div class="k">Waiting for OK</div><div class="n">'+it.length+'</div><div class="s">'+(oldest?'Longest wait: '+esc(ageTxt(oldest)):'Nothing waiting')+'</div></div>'
-    +'<div class="kpi '+(bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+bad+'</div><div class="s">'+(bad?'Not ticked for you':'All counts match')+'</div></div>'
+    +'<div class="kpi '+(bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+bad+'</div><div class="s">'+(bad?'Look at these first':'All counts match')+'</div></div>'
     +'<div class="kpi info"><div class="k">Checked, award list pending</div><div class="n">'+ck.length+'</div><div class="s">Verify when the list is in hand</div></div></div>'
     +'<div class="tabs"><button class="'+(!C?'on':'')+'" onclick="setDtab(\'ok\')">Waiting for OK ('+it.length+')</button><button class="'+(C?'on':'')+'" onclick="setDtab(\'chk\')">Checked ('+ck.length+')</button></div>';
 }
@@ -544,7 +544,7 @@ function deskBodyHtml(){
   var cur=dq.trim().toLowerCase();
   h+='<div class="box"><b>'+v.length+(v.length===L.length?'':' of '+L.length)+(C?' checked envelope':' envelope')+(L.length===1?'':'s')+(C?' waiting for the award list':' waiting for your OK')+'</b>'
     +'<div class="dsum"><span>Ticked <b id="dtick">'+Object.keys(s).length+'</b></span>'+(bad?'<span style="color:#b3261e">Count problem <b style="color:#b3261e">'+bad+'</b></span>':'')+(late?'<span style="color:#b3261e">Waiting 45 min+ <b style="color:#b3261e">'+late+'</b></span>':'')+'</div>'
-    +'<div class="hint" style="margin:6px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Tick the envelopes you have in your hand. Ones with a count problem are not ticked for you.')+'</div>';
+    +'<div class="hint" style="margin:6px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Nothing is ticked for you. Tick only the envelopes you have in your hand (or use Select all shown).')+'</div>';
   if(tch.length>1){
     h+='<div class="hint" style="margin-top:10px">Teachers (tap to show only theirs)</div><div class="chips"><button class="chip'+(cur?'':' on')+'" onclick="pickT(-1)">All teachers</button>';
     tch.forEach(function(t,i){h+='<button class="chip'+(cur&&cur===String(t.key).toLowerCase()?' on':'')+'" onclick="pickT('+i+')">'+esc((t.name||t.key)+(t.emp?' ('+t.emp+')':''))+' <small>'+t.n+'</small></button>'});
