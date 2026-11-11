@@ -134,6 +134,22 @@ a.res i{margin-top:8px}
 .dk h2{margin-top:20px}
 .dr{transition:box-shadow .12s,transform .08s}.dr:hover{box-shadow:0 2px 4px rgba(10,40,28,.08),0 10px 24px rgba(10,40,28,.10)}
 .rw input[type=checkbox]:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+
+/* handover notice (invigilator, waiting for Exam Office OK) */
+.handover{background:#fff6dc;border:1.5px solid #f0c24a;border-left-width:6px;border-left-color:#e0a800}
+.handover .ho-t{font-size:15px;font-weight:700;color:#7a5b00;margin-bottom:4px}.handover .ho-b{font-size:15px;line-height:1.5;color:#3d3200}
+
+.tcf{display:flex;align-items:flex-start;gap:10px;background:#eef4fb;border:1.5px solid #b9d0ea;border-radius:12px;padding:11px 12px;margin:12px 0 0;font-weight:500;font-size:14px;line-height:1.4;color:#1c3d66;cursor:pointer}
+.tcf input{flex:none;width:22px;height:22px;min-height:0;margin:1px 0 0;padding:0;accent-color:#0b4a37}
+
+/* completion popup */
+.pop{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,30,22,.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:fadein .15s ease both}
+.pcard{width:100%;max-width:360px;background:#fff;border-radius:22px;padding:24px 20px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:popin .2s cubic-bezier(.2,1.2,.4,1) both}
+.pi{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;background:#dcf1e3;color:#0b5d3b;font-size:32px;line-height:60px;font-weight:700}
+.pcard.pw .pi{background:#fff2cc;color:#7a5b00}
+.pt{font-size:20px;font-weight:700;color:var(--tx)}.pm{font-size:15px;line-height:1.45;color:var(--mu);margin-top:8px}.pcard.pw .pm{color:#5c4600;font-weight:600}
+.pcard button{margin-top:16px}
+@keyframes fadein{from{opacity:0}to{opacity:1}}@keyframes popin{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:none}}
 </style></head><body>
 <div class="top"><div class="th"><h1>Envelope Tracker</h1><div class="s">Exam Office</div><nav id="tn" class="tn"></nav></div></div>
 <div class="c"><div id="app"><div class="sk" style="height:22px;width:55%;margin:18px 0 8px"></div><div class="sk" style="height:150px;margin:12px 0"></div><div class="sk" style="height:56px"></div></div></div>
@@ -170,7 +186,7 @@ else if(Q.get('x')==='1'&&!Q.get('e'))document.body.className='dm dk';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
 var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
-var emp='',empName='',empNote='',eState='',eCan=false;
+var emp='',empName='',empNote='',eState='',eCan=false,tchk=false;
 var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ms:'',mp:'',mq:'0',ds:'',dp:''};
 /* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
 var FS=Q.get('s')==='1',rem=true;
@@ -187,7 +203,7 @@ function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
 function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
 function syncRes(r){if(r&&r.found&&r.status&&res)res.forEach(function(x){if(x.id===r.id)x.status=r.status})}
 function cacheInfo(id,r){try{var c={};for(var k in r)c[k]=r[k];c._t=Date.now();sessionStorage.setItem('envI:'+id,JSON.stringify(c))}catch(e){}}
-function setInfo(r,nocache){syncRes(r);o=r;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
+function setInfo(r,nocache){syncRes(r);o=r;tchk=false;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
   if(!nocache&&r&&r.found&&ID)cacheInfo(ID,r)}
 function skel(){return '<div class="sk" style="height:22px;width:60%;margin:18px 0 8px"></div><div class="sk" style="height:38px;margin:12px 0"></div><div class="sk" style="height:200px;margin:12px 0"></div><div class="sk" style="height:140px"></div>'}
 function blocked(){if(stale){say('Updating this envelope, try again in a moment.','err');return true}return false}
@@ -258,6 +274,7 @@ function stageBox(){
   if(st==='receive')return idBox('<button id="go" onclick="act(\'receive\')">Mark received</button><div class="hint">Tap when you take the envelope from the Exam Office.</div>');
   if(st==='return')return idBox(countForm('Submit return'));
   return idBox('<div class="hint" style="margin:0 0 4px">Filled books returned from the room: <b>'+esc(o.sheets)+'</b></div>'
+    +'<label class="tcf"><input type="checkbox" id="f_tc"'+(tchk?' checked':'')+' onchange="tchk=this.checked"><span>I am the <b>teacher</b> who checked these answer books. (Invigilators: do not use this step.)</span></label>'
     +'<label for="f_m">Answer books CHECKED by the teacher</label><input id="f_m" type="number" inputmode="numeric" min="0" value="'+esc(S.m)+'" oninput="live()">'
     +'<div id="chk2" class="chk"></div><button id="go" onclick="act(\'mark\')">Mark papers checked</button><button class="lnk" onclick="showFix=true;render()">Fix the returned counts</button>');
 }
@@ -271,17 +288,14 @@ function seatBox(){
     +'<label for="f_sp">Your PIN</label><input id="f_sp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.sp)+'">'
     +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
 }
+function handoverBanner(){return '<div class="box handover"><div class="ho-t">&#9888; Not final yet</div><div class="ho-b">Take this envelope to the <b>Exam Officer</b> now and get the receiving confirmed.<br>Your return is complete only after the Exam Officer confirms it.</div></div>'}
 function acceptBox(){
   var r=o.req||{},rq=Number(r.mcq)||0,mis=Number(r.filled)+(Number(r.absent)||0)+rq!==Number(o.seated);
-  return '<div class="box"><div class="hint" style="margin:0 0 6px"><b>Waiting for the Exam Office to confirm.</b> Invigilator: hand this envelope to the Exam Office. It is final only after the Exam Office receiver taps OK.</div>'
-    +row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':''))+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
-    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(o.seated)+' seated.</div>':'')
-    +'<div class="hint" style="margin:10px 0 0"><b>Exam Office receiver only:</b></div>'
-    +'<label for="f_rs">Your employee code</label><input id="f_rs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.rs)+'">'
-    +'<label for="f_rp">Your PIN</label><input id="f_rp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
-    +'<button id="go" onclick="decideReturn(\'ok\')">Envelope received: OK</button>'
-    +'<button class="lnk" onclick="decideReturn(\'back\')">Not received / wrong counts: send back</button>'
-    +'<button class="lnk" onclick="showFix=true;render()">Fix the counts (invigilator)</button></div>';
+  /* The invigilator's phone never asks for an Exam Office PIN: the OK is given only at the Exam Office Receiving Desk. */
+  return '<div class="box">'+row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':''))+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
+    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(o.seated)+' seated. The Exam Officer may send it back.</div>':'')
+    +'<div class="hint">If the Exam Officer sends it back, or a count is wrong, open this page again and fix the counts.</div>'
+    +'<button class="lnk" onclick="showFix=true;render()">Fix the counts</button></div>';
 }
 function decideReturn(dc){
   if(busy||blocked())return;grab();
@@ -322,6 +336,7 @@ function undoReturn(){
       if(r.info){setInfo(r.info);if(r.ok){showUndo=false;showFix=false}}
       if(r.ok)SC={};
       render();window.scrollTo(0,0);
+      if(r.ok)popup('Return cancelled',r.msg||'');
     }).withFailureHandler(function(e){
       if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
       fail(e);
@@ -342,6 +357,7 @@ function setSeat(){
       if(r.info){syncRes(r.info);o=r.info;cacheInfo(ID,r.info)}   /* keep what was typed in the other boxes */
       if(r.ok){showSeat=false;SC={}}
       render();window.scrollTo(0,0);
+      if(r.ok)popup('Strength changed',r.msg||'');
     }).withFailureHandler(function(e){
       if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
       fail(e);
@@ -596,6 +612,7 @@ function deskVerify(){
     kind=(stop||fails.length)?'err':'ok';
     if(stop){deskOut(msg);return}
     window.scrollTo(0,0);loadDesk(false);
+    if(done)popup('Verified',msg,fails.length>0,fails.length>0);
   }
   prog();
   pool(ids.slice(0,1),1,one,function(){},function(){
@@ -632,6 +649,7 @@ function deskDecide(dc){
     kind=(stop||fails.length)?'err':'ok';
     if(stop){desk=null;xP='';xC='';deskOut(msg);return}
     window.scrollTo(0,0);loadDesk(false);   /* fresh list from the server */
+    if(done)popup(dc==='ok'?'Received OK':'Sent back',msg,fails.length>0,fails.length>0);
   }
   prog();
   /* the first envelope alone proves the PIN; only then the rest run 3 at a time */
@@ -830,6 +848,7 @@ function render(){
   s+='<h2 style="margin-top:4px">'+esc(o.title)+'</h2><div class="sub">'+esc(o.code)+', '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>'+(stale?'<div class="upd">Updating...</div>':'');
   s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+labels[i]+'</div>';s+='</div>';
   s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(st==='accept'&&!showFix)s+=handoverBanner();
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books'+'':''))+(o.mcqN?row('UMC cases (book not in envelope)',String(o.mcqN)):'')+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
@@ -846,6 +865,18 @@ function render(){
   var tn=$('tn');if(tn)tn.innerHTML=(!ID&&(DESK||DM))?'<a href="?a='+enc(A)+'">&#8249; Home</a>'+(DESK?'<a href="?d=1&a='+enc(A)+'">Dashboard</a>':'<a href="?x=1&a='+enc(A)+'">Receiving Desk</a>'):'';
   updBar();
 }})();
+/* ---- completion popup: shown after every successful step so nobody leaves unsure whether it was saved ---- */
+var popT=null;
+function popClose(){clearTimeout(popT);var e=$('pop');if(e)e.parentNode.removeChild(e)}
+function popup(title,text,warn,keep){
+  popClose();var d=document.createElement('div');d.id='pop';d.className='pop';d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','pop_t');
+  d.innerHTML='<div class="pcard'+(warn?' pw':'')+'"><div class="pi">'+(warn?'&#9888;':'&#10003;')+'</div><div class="pt" id="pop_t">'+esc(title)+'</div>'+(text?'<div class="pm">'+esc(text)+'</div>':'')+'<button type="button" id="pop_ok">OK</button></div>';
+  d.addEventListener('click',function(ev){if(ev.target===d)popClose()});
+  document.body.appendChild(d);var b=$('pop_ok');b.onclick=popClose;try{b.focus()}catch(e){}
+  if(!keep)popT=setTimeout(popClose,7000);
+}
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape')popClose()});
+var POPT={receive:'Envelope received',return:'Return submitted',mark:'Papers checked',verify:'Verified'};
 function act(a){
   if(busy||blocked())return;grab();
   var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,mcq:S.mq,staff:S.st.trim(),pin:S.pin};
@@ -854,6 +885,7 @@ function act(a){
   if(a==='return'&&bad(S.n)){say('Enter the number of FILLED answer books returned (0 or more).','err');return}
   if(a==='return'&&S.a!==''&&bad(S.a)){say('Students absent must be 0 or more.','err');return}
   if(a==='return'&&!o.returned&&!confirm('Submit these counts and hand this envelope to the Exam Office now? It becomes final only after the Exam Office receiver confirms. If the envelope is still in the room, tap Cancel.'))return;
+  if(a==='mark'&&!tchk){say('Tick "I am the teacher who checked these answer books" first. If you are the invigilator, this step is not for you.','err');return}
   if(a==='mark'&&bad(S.m)){say('Enter how many answer books were CHECKED (0 or more).','err');return}
   if(a==='return'&&S.mq!==''&&bad(S.mq)){say('UMC cases must be 0 or more.','err');return}
   if(a==='mark'&&Number(S.m)!==Number(o.sheets)&&!confirm('You entered '+S.m+' checked, but '+o.sheets+' filled books were returned. This will be flagged. Continue?'))return;
@@ -870,6 +902,7 @@ function act(a){
       if(r.info){setInfo(r.info);if(r.ok)showFix=false}
       if(r.ok)SC={};   /* search lists are now out of date */
       render();window.scrollTo(0,0);
+      if(r.ok)popup(POPT[a]||'Done',a==='return'?'NOT FINAL YET: give this envelope to the Exam Officer now and get the receiving confirmed.':(r.msg||''),a==='return',a==='return');
     }).withFailureHandler(function(e){
       if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;var g=$('go');if(g)g.textContent='Connection weak, retrying...';setTimeout(send,2000);return}
       fail(e);
