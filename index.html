@@ -187,9 +187,9 @@ if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
 else if(Q.get('x')==='1'&&!Q.get('e'))document.body.className='dm dk';
 var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
 var $=function(x){return document.getElementById(x)};
-var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
+var note='',o=null,busy=false,showFix=false,showSeat=false,showUmc=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
 var emp='',empName='',empNote='',eState='',eCan=false,tchk=false;
-var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ms:'',mp:'',mq:'0',ds:'',dp:''};
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ms:'',mp:'',mq:'0',un:'',ws:'',wp:'',ds:'',dp:''};
 /* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
 var FS=Q.get('s')==='1',rem=true;
 try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
@@ -256,7 +256,8 @@ function live(){
 function countForm(btnText){
   return '<div class="two"><div><label for="f_n">Filled books returned</label><input id="f_n" type="number" inputmode="numeric" min="0" value="'+esc(S.n)+'" oninput="live()"></div>'
     +'<div><label for="f_a">Students absent</label><input id="f_a" type="number" inputmode="numeric" min="0" value="'+esc(S.a)+'" oninput="live()"></div></div>'
-    +'<label for="f_mq">UMC cases (book not in envelope)</label><input id="f_mq" type="number" inputmode="numeric" min="0" value="'+esc(S.mq)+'" oninput="live()">'
+    +'<label for="f_mq">UMC cases (book not in envelope)</label><input id="f_mq" type="number" inputmode="numeric" min="0" value="'+esc(S.mq)+'" oninput="live()"'+(o&&o.returned?' readonly style="background:#eceff1"':'')+'>'
+    +(o&&o.returned?'<div class="hint">UMC is locked now. Only the Exam Office can change it (button below).</div>':'')
     +'<div class="hint">Filled means used, not blank. If the book of a student was taken for an Unfair Means Case (UMC) and is not in this envelope, enter how many (else leave 0). Filled + absent + UMC = seated.</div><div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+btnText+'</button>';
 }
 function stageBox(){
@@ -289,6 +290,36 @@ function seatBox(){
     +'<label for="f_ss">Your employee code</label><input id="f_ss" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ss)+'">'
     +'<label for="f_sp">Your PIN</label><input id="f_sp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.sp)+'">'
     +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
+}
+function umcBox(){
+  if(!o||!o.returned||o.stage==='done')return '';
+  if(!showUmc)return '<button class="lnk" onclick="grab();showUmc=true;S.un=String(o.mcqN||0);render()">UMC is wrong? Change it (Exam Office)</button>';
+  return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. Current UMC: <b>'+esc(o.mcqN||0)+'</b>. Seated does not change: filled + absent + UMC should equal seated.</div>'
+    +'<label for="f_un">New UMC (book not in envelope)</label><input id="f_un" type="number" inputmode="numeric" min="0" value="'+esc(S.un)+'">'
+    +'<label for="f_ws">Your employee code</label><input id="f_ws" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ws)+'">'
+    +'<label for="f_wp">Your PIN</label><input id="f_wp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.wp)+'">'
+    +'<button id="go3" onclick="setUmc()">Save UMC</button><button class="lnk" onclick="showUmc=false;S.wp=\'\';render()">Cancel</button></div>';
+}
+function setUmc(){
+  if(busy||blocked())return;grab();
+  var n=S.un.trim();
+  if(n===''||isNaN(Number(n))||Number(n)<0||Math.floor(Number(n))!==Number(n)){say('Enter UMC as a whole number (0 or more).','err');return}
+  if(!S.ws.trim()||!S.wp.trim()){say('Enter your employee code and PIN.','err');return}
+  if(!confirm('Change UMC from '+(o.mcqN||0)+' to '+n+'?'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.wp='';
+      if(r.info){syncRes(r.info);o=r.info;cacheInfo(ID,r.info);S.mq=String(r.info.mcqN||0)}
+      if(r.ok){showUmc=false;SC={}}
+      render();window.scrollTo(0,0);
+      if(r.ok)popup('UMC changed',r.msg||'');
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeSetUmc(ID,KEY,n,S.ws.trim(),S.wp);
+  })();
 }
 function handoverBanner(){return '<div class="box handover"><div class="ho-t">&#9888; Not final yet</div><div class="ho-b">Take this envelope to the <b>Exam Officer</b> now and get the receiving confirmed.<br>Your return is complete only after the Exam Officer confirms it.</div></div>'}
 function acceptBox(){
@@ -664,12 +695,12 @@ function deskDecide(dc){
 function enc(x){return encodeURIComponent(x)}
 function openEnv(i){
   var r=res[i];if(!r)return;
-  grab();ID=r.id;KEY=r.k;FS=true;o=null;showFix=false;showSeat=false;showUndo=false;msg='';kind='';S.n='';S.a='0';S.m='';
+  grab();ID=r.id;KEY=r.k;FS=true;o=null;showFix=false;showSeat=false;showUmc=false;showUndo=false;msg='';kind='';S.n='';S.a='0';S.m='';
   try{history.replaceState(null,'','?e='+enc(ID)+'&k='+enc(KEY)+'&a='+enc(A)+'&s=1')}catch(e){}
   loadInfo();window.scrollTo(0,0);
 }
 function goHome(){
-  grab();ID='';KEY='';o=null;stale=false;showFix=false;showSeat=false;showUndo=false;msg='';kind='';
+  grab();ID='';KEY='';o=null;stale=false;showFix=false;showSeat=false;showUmc=false;showUndo=false;msg='';kind='';
   try{history.replaceState(null,'','?a='+enc(A))}catch(e){}
   render();window.scrollTo(0,0);
 }
@@ -858,7 +889,7 @@ function render(){
   s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
     +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
     +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books'+'':''))+(o.mcqN?row('UMC cases (book not in envelope)',String(o.mcqN)):'')+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
-  s+=stageBox()+undoBox()+seatBox()+'<a class="lk" onclick="goHome();return false" href="?a='+esc(A)+'">Search another envelope</a>';
+  s+=stageBox()+undoBox()+seatBox()+umcBox()+'<a class="lk" onclick="goHome();return false" href="?a='+esc(A)+'">Search another envelope</a>';
   Ap.innerHTML=s;live();
 }
 /* after every screen: Enter submits the code or the search, the code box is ready to type in, and the bulk bar is updated */
