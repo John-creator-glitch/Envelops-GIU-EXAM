@@ -1,4 +1,4 @@
-<!-- Envelope Tracker page v12 (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
+<!-- Envelope Tracker page v13 (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="app" content="envelope-tracker-page"><title>Envelope Tracker</title><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0e3b2e">
 <link rel="preconnect" href="https://script.google.com"><link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <style>
@@ -205,7 +205,7 @@ function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
 function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
 function syncRes(r){if(r&&r.found&&r.status&&res)res.forEach(function(x){if(x.id===r.id)x.status=r.status})}
 function cacheInfo(id,r){try{var c={};for(var k in r)c[k]=r[k];c._t=Date.now();sessionStorage.setItem('envI:'+id,JSON.stringify(c))}catch(e){}}
-function setInfo(r,nocache){syncRes(r);o=r;tchk=false;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
+function setInfo(r,nocache){syncRes(r);o=r;tchk=false;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq=String(r.mcqN||0);if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
   if(!nocache&&r&&r.found&&ID)cacheInfo(ID,r)}
 function skel(){return '<div class="sk" style="height:22px;width:60%;margin:18px 0 8px"></div><div class="sk" style="height:38px;margin:12px 0"></div><div class="sk" style="height:200px;margin:12px 0"></div><div class="sk" style="height:140px"></div>'}
 function blocked(){if(stale){say('Updating this envelope, try again in a moment.','err');return true}return false}
@@ -250,8 +250,9 @@ function live(){
   if(!o)return;grab();
   var el=$('chk');
   if(el){var n=S.n,a=S.a;if(n===''){el.className='chk';el.textContent=''}else{var q=(S.mq===''||isNaN(Number(S.mq)))?0:Number(S.mq),t=Number(n)+(a===''?0:Number(a))+q,tx=n+' filled + '+(a||0)+' absent'+(q?' + '+q+' UMC':'');
-    if(t===Number(o.seated)){el.className='chk good';el.textContent=tx+' = '+t+' (matches '+o.seated+' seated)'}
-    else{el.className='chk bad';el.textContent=tx+' = '+t+', but '+o.seated+' seated. Will be flagged.'}}}
+    var base=Number(o.seated)+(Number(o.mcqN)||0);   /* o.seated already has the earlier UMC taken out; add it back to compare with filled + absent + UMC */
+    if(t===base){el.className='chk good';el.textContent=tx+' = '+t+' (matches '+base+' seated)'}
+    else{el.className='chk bad';el.textContent=tx+' = '+t+', but '+base+' seated. Will be flagged.'}}}
 }
 function countForm(btnText){
   return '<div class="two"><div><label for="f_n">Filled books returned</label><input id="f_n" type="number" inputmode="numeric" min="0" value="'+esc(S.n)+'" oninput="live()"></div>'
@@ -292,10 +293,10 @@ function seatBox(){
 }
 function handoverBanner(){return '<div class="box handover"><div class="ho-t">&#9888; Not final yet</div><div class="ho-b">Take this envelope to the <b>Exam Officer</b> now and get the receiving confirmed.<br>Your return is complete only after the Exam Officer confirms it.</div></div>'}
 function acceptBox(){
-  var r=o.req||{},rq=Number(r.mcq)||0,mis=Number(r.filled)+(Number(r.absent)||0)+rq!==Number(o.seated);
+  var r=o.req||{},rq=Number(r.mcq)||0,bs=Number(o.seated)+(Number(o.mcqN)||0),mis=Number(r.filled)+(Number(r.absent)||0)+rq!==bs;
   /* The invigilator's phone never asks for an Exam Office PIN: the OK is given only at the Exam Office Receiving Desk. */
   return '<div class="box">'+row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':''))+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
-    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(o.seated)+' seated. The Exam Officer may send it back.</div>':'')
+    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(bs)+' seated. The Exam Officer may send it back.</div>':'')
     +'<div class="hint">If the Exam Officer sends it back, or a count is wrong, open this page again and fix the counts.</div>'
     +'<button class="lnk" onclick="showFix=true;render()">Fix the counts</button></div>';
 }
@@ -702,7 +703,7 @@ function pollInfo(){
       if(was==='accept'&&r.stage==='mark'){msg='Receiving confirmed by the Exam Office.';popup('Receiving confirmed','The Exam Officer has confirmed this envelope. Your return is complete. Thank you.')}
       else if(was==='accept'&&r.stage==='return'){msg='Sent back by the Exam Office.';kind='err';render();popup('Sent back','The Exam Officer sent this return back. Fix the counts and submit again.',true,true)}
       return}
-    if(typing){o.seated=r.seated;o.status=r.status;syncRes(r);live();return}   /* do not disturb typing; the check line already uses the new strength */
+    if(typing){o.seated=r.seated;o.mcqN=r.mcqN;o.status=r.status;syncRes(r);live();return}   /* do not disturb typing; the check line already uses the new strength */
     grab();syncRes(r);o=r;if(seatChg){msg='Student strength was updated to '+r.seated+'.';kind='ok'}render();
   }).withFailureHandler(function(){}).envelopeScanInfo(id,k);
 }
@@ -885,7 +886,7 @@ document.addEventListener('keydown',function(ev){if(ev.key==='Escape')popClose()
 var POPT={receive:'Envelope received',return:'Return submitted',mark:'Papers checked',verify:'Verified'};
 function act(a){
   if(busy||blocked())return;grab();
-  var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,mcq:S.mq,staff:S.st.trim(),pin:S.pin};
+  var p={emp:emp,filled:S.n,absent:S.a,marked:S.m,mcq:S.mq,ver:13,staff:S.st.trim(),pin:S.pin};   /* ver 13: the server lets only this page change UMC after the OK */
   function bad(x){return x===''||isNaN(Number(x))||Number(x)<0}
   if(a!=='verify'&&eState!=='found'){say('Enter your employee code and tap Continue first.','err');return}
   if(a==='return'&&bad(S.n)){say('Enter the number of FILLED answer books returned (0 or more).','err');return}
