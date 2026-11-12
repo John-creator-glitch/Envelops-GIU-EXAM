@@ -1,3 +1,884 @@
+<!-- Envelope Tracker page v12 (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="app" content="envelope-tracker-page"><title>Envelope Tracker</title><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0e3b2e">
+<link rel="preconnect" href="https://script.google.com"><link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<style>
+:root{--g:#0e3b2e;--g2:#e8f1ec;--bg:#f2f5f3;--tx:#1b2b24;--mu:#5d6d65;--ln:#d9e1dc;--sh:0 1px 2px rgba(16,40,30,.06),0 2px 8px rgba(16,40,30,.04)}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--tx);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+.top{background:linear-gradient(135deg,#0e3b2e,#165a45);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 12px}.top h1{font-size:19px;margin:0;line-height:1.2;letter-spacing:.01em}.top .s{font-size:13px;opacity:.8;margin-top:2px}
+.c{max-width:520px;margin:0 auto;padding:0 14px 48px}
+h2{font-size:18px;margin:14px 0 2px;line-height:1.25}.sub{font-size:13px;color:var(--mu)}.id{font-size:11px;color:#8a968f;word-break:break-all;margin-top:2px}
+.box{background:#fff;border-radius:14px;padding:14px;margin:12px 0;border:1px solid var(--ln);box-shadow:var(--sh)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eef1ef;font-size:14px}.row:last-child{border:0}.row span{color:var(--mu)}.row b{text-align:right}
+.msg{position:sticky;top:0;z-index:5;padding:12px;border-radius:10px;font-weight:600;font-size:15px;margin:10px 0;display:none;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.msg.ok{display:block;background:#d9ead3;color:#0b3d1c}.msg.err{display:block;background:#f8d7d3;color:#7a1410}
+button{width:100%;font:inherit;font-size:17px;padding:15px;margin:8px 0 0;border:0;border-radius:12px;background:var(--g);color:#fff;font-weight:600;cursor:pointer;transition:transform .08s,background .15s;touch-action:manipulation}
+button:active:not(:disabled){transform:scale(.98)}
+button:disabled{background:#9aa8a1}button:focus-visible,input:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+.lnk{background:none;color:var(--g);font-size:14px;font-weight:400;text-decoration:underline;padding:10px;margin-top:2px}.lnk:disabled{background:none;color:#9aa8a1}
+a.lk{display:block;text-align:center;color:var(--g);font-size:14px;padding:14px;text-decoration:underline}
+label{display:block;font-size:14px;margin:12px 0 4px;color:#35453d}
+input{width:100%;font:inherit;font-size:18px;padding:11px;min-height:48px;border:1px solid #9aa8a1;border-radius:10px;background:#fff}
+input[type=checkbox]{min-height:0}
+.chk{font-size:14px;font-weight:600;margin:10px 0 2px;min-height:20px}.chk.good{color:#1b6b2f}.chk.bad{color:#b3261e}
+.big{font-size:17px;text-align:center;padding:6px}.hint{font-size:12px;color:var(--mu);margin-top:6px}.warn{font-size:13px;color:#7a1410;background:#f8d7d3;border-radius:8px;padding:8px;margin:6px 0}
+.upd{font-size:12px;color:var(--mu);margin-top:4px}
+.steps{display:flex;gap:6px;margin:14px 0 6px}.stp{flex:1;text-align:center;font-size:12px;padding:9px 2px;border-radius:10px;background:#e3e8e5;color:#7a867f;font-weight:600}
+.stp.done{background:var(--g);color:#fff}.stp.now{background:#fff;color:var(--g);border:2px solid var(--g)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;margin:6px 0 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;width:auto;font-size:13px;padding:8px 12px;margin:0;border-radius:99px;background:#fff;color:var(--tx);border:1px solid var(--ln);font-weight:500}
+.chip.on{background:var(--g);color:#fff;border-color:var(--g)}
+a.res{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--ln);border-left:6px solid #9aa8a1;border-radius:12px;padding:10px 12px;margin:8px 0;box-shadow:var(--sh);animation:up .16s ease both;transition:transform .08s}
+a.res:active{transform:scale(.99)}
+a.res b{display:block;font-size:15px;line-height:1.3}a.res span{font-size:12.5px;color:var(--mu);display:block;margin-top:2px}
+a.res i{display:inline-block;font-style:normal;font-size:12px;font-weight:700;margin-top:6px;padding:3px 9px;border-radius:99px;background:#eceff1;color:#546e7a}
+.g-todo{border-left-color:#9aa8a1}.g-room{border-left-color:#e0a800}.g-ret{border-left-color:#3d9a54}.g-chk{border-left-color:#3b78c4}.g-done{border-left-color:#0b5d3b}.g-bad{border-left-color:#b3261e}
+.g-room i{background:#fff2cc;color:#7a5b00}.g-ret i{background:#d9ead3;color:#1b5e20}.g-chk i{background:#cfe2f3;color:#1c4587}.g-done i{background:#b7e1cd;color:#0b5d3b}.g-bad i{background:#f4c7c3;color:#b3261e}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}.tabs button{margin:0;font-size:15px;padding:11px;background:#fff;color:var(--g);border:2px solid var(--g)}.tabs button.on{background:var(--g);color:#fff}
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#e3e8e5;margin:8px 0 6px}.bar i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--mu)}.leg b{color:var(--tx)}.leg u{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;text-decoration:none}
+select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #9aa8a1;border-radius:10px;background:#fff}
+.dm .c{max-width:1040px}.dm .top{padding:calc(18px + env(safe-area-inset-top)) 20px 14px}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:linear-gradient(135deg,#0e3b2e,#165a45);color:#fff;border-radius:16px;padding:18px;margin:12px 0}
+.hero .t{font-size:13px;opacity:.8;letter-spacing:.04em;text-transform:uppercase}.hero .v{font-size:30px;font-weight:700;line-height:1.1;margin:2px 0}.hero .d{font-size:13px;opacity:.85}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.kpi{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:13px 14px;border-top:4px solid #9aa8a1;box-shadow:var(--sh)}
+.kpi .k{font-size:11.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;font-weight:600}.kpi .n{font-size:27px;font-weight:700;line-height:1.15;margin-top:3px}.kpi .s{font-size:12px;color:var(--mu);margin-top:2px}
+.kpi.good{border-top-color:#0b5d3b}.kpi.warn2{border-top-color:#e0a800}.kpi.bad{border-top-color:#b3261e}.kpi.info{border-top-color:#3b78c4}
+.sec{font-size:13px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em;margin:20px 2px 6px}
+.two2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.fun{display:grid;grid-template-columns:92px 1fr 46px;gap:8px;align-items:center;font-size:13px;margin:7px 0}.fun .tr{height:12px;background:#e3e8e5;border-radius:6px;overflow:hidden}.fun .tr i{display:block;height:100%;border-radius:6px}.fun b{text-align:right}
+.dt{display:grid;grid-template-columns:86px 1fr 62px;gap:8px;align-items:center;font-size:13px;padding:6px 6px;border-radius:8px;cursor:pointer}.dt.on{background:var(--g2);font-weight:600}.dt .tr{height:10px;background:#e3e8e5;border-radius:5px;overflow:hidden}.dt .tr i{display:block;height:100%;background:#0b5d3b}.dt span:last-child{text-align:right;color:var(--mu);font-size:12px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px}.p-ok{background:#b7e1cd;color:#0b5d3b}.p-go{background:#cfe2f3;color:#1c4587}.p-at{background:#f4c7c3;color:#b3261e}.p-no{background:#eceff1;color:#546e7a}
+.sh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rw{display:flex;align-items:flex-start;gap:8px}.rw input{width:26px;height:26px;flex:none;margin:18px 0 0;padding:0;accent-color:#0e3b2e}.rw a.res{flex:1;min-width:0}
+.bb{position:fixed;left:0;right:0;bottom:0;z-index:6;background:rgba(255,255,255,.96);border-top:1px solid var(--ln);padding:8px 14px calc(10px + env(safe-area-inset-bottom));display:none;box-shadow:0 -4px 16px rgba(0,0,0,.08)}.bbi{max-width:520px;margin:0 auto}.bbi button{margin:0}
+.sk{background:linear-gradient(90deg,#e6ece8 25%,#f3f6f4 37%,#e6ece8 63%);background-size:400% 100%;animation:shm 1.2s ease infinite;border-radius:12px}
+@keyframes shm{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media(max-width:480px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}}
+.dr{flex:1;min-width:0;display:block;background:#fff;border:1px solid var(--ln);border-left:6px solid #e0a800;border-radius:12px;padding:10px 12px;margin:8px 0;box-shadow:var(--sh)}.dr.bad{border-left-color:#b3261e}.dr b{display:block;font-size:15px;line-height:1.3}.dr span{display:block;font-size:12.5px;color:var(--mu);margin-top:2px}
+.empty{text-align:center;color:var(--mu);font-size:14px;padding:22px 8px}
+
+/* ===== look v10: polish only (no logic changes) ===== */
+:root{--g:#0b4a37;--g1:#0f6a4e;--g2:#e6f3ec;--bg:#eef3f0;--ln:#dde6e1;--r:16px;--sh:0 1px 2px rgba(10,40,28,.05),0 6px 18px rgba(10,40,28,.07);--ac:#f2b705}
+body{background:radial-gradient(1200px 300px at 50% -80px,#d7ebe0,transparent 70%),var(--bg);background-repeat:no-repeat;letter-spacing:.005em}
+.top{position:sticky;top:0;z-index:7;background:linear-gradient(120deg,#08392a 0%,#0f6a4e 100%);padding:calc(12px + env(safe-area-inset-top)) 16px 12px;box-shadow:0 6px 20px rgba(8,57,42,.28)}
+.top>*{max-width:520px;margin-left:auto;margin-right:auto}.dm .top>*{max-width:1040px}
+.top h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.top h1::before{content:"";flex:none;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.16) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='14' rx='2.5'/><path d='M3.5 6.5l8.5 6.5 8.5-6.5'/></svg>") center/18px no-repeat}
+.top .s{margin-left:40px;font-size:12.5px;opacity:.78}
+h2{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-top:18px}
+.id{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;background:#e1ebe5;color:#4d6358;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em}
+.box{border-radius:var(--r);padding:16px;border:1px solid var(--ln);box-shadow:var(--sh)}
+.row{padding:9px 0;border-bottom:1px dashed #e3eae6}.row span{font-size:13px}.row b{font-weight:650}
+/* stepper: connected rail */
+.steps{gap:0;margin:18px 0 8px;position:relative;counter-reset:s}
+.stp{position:relative;background:none!important;color:#8a9a92;border:0!important;font-size:11.5px;padding:30px 2px 0;counter-increment:s}
+.stp::before{content:counter(s);position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:24px;border-radius:50%;background:#dfe7e2;color:#6c7d74;font-size:12px;line-height:24px;font-weight:700;z-index:1}
+.stp::after{content:"";position:absolute;top:11px;left:-50%;width:100%;height:2px;background:#d3ddd7}.stp:first-child::after{display:none}
+.stp.done{color:var(--g)}.stp.done::before{content:"\2713";background:var(--g);color:#fff}.stp.done::after{background:var(--g)}
+.stp.now{color:var(--g);font-weight:700}.stp.now::before{background:#fff;color:var(--g);box-shadow:0 0 0 2px var(--g),0 0 0 6px rgba(15,106,78,.15)}.stp.now::after{background:var(--g)}
+/* inputs */
+label{font-size:12.5px;font-weight:650;color:#3b4f45;margin:14px 0 5px;letter-spacing:.01em}
+input,select{border:1.5px solid #c3d0c9;border-radius:12px;background:#fbfdfc;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{outline:none;border-color:var(--g1);box-shadow:0 0 0 4px rgba(15,106,78,.16);background:#fff}
+button:focus-visible,a:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+/* buttons */
+button{background:linear-gradient(180deg,#0f6a4e,#0b4a37);border-radius:14px;padding:15px;box-shadow:0 6px 14px rgba(11,74,55,.25),inset 0 1px 0 rgba(255,255,255,.18);letter-spacing:.01em}
+button:hover:not(:disabled){filter:brightness(1.06)}
+button:disabled{background:#a9b8b0;box-shadow:none}
+.lnk{background:none;box-shadow:none;color:var(--g);font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #c3d6cc;border-radius:12px;background:#fff;padding:11px;margin-top:8px}
+.lnk:hover:not(:disabled){background:var(--g2);filter:none}
+.lnk:disabled{background:#f3f6f4;color:#9aa8a1;border-color:#e1e8e4}
+a.lk{font-weight:600;text-decoration:none;padding:12px}
+.tabs button{border:0;background:#fff;color:var(--g);box-shadow:var(--sh);border-radius:12px}.tabs button.on{background:linear-gradient(180deg,#0f6a4e,#0b4a37);color:#fff}
+.two .lnk{font-size:13px}
+/* messages / checks */
+.msg{border-radius:14px;padding:13px 14px;border:1px solid transparent}.msg.ok{background:#dcf1e3;border-color:#b5dfc2;color:#0b3d1c}.msg.err{background:#fde3e0;border-color:#f3b9b3;color:#7a1410}
+.chk{padding:0;border-radius:10px}.chk.good,.chk.bad{padding:9px 11px}.chk.good{background:#e1f4e7}.chk.bad{background:#fde7e4}
+.warn{border-radius:10px;border:1px solid #f3b9b3;padding:9px 11px}
+.hint{line-height:1.45}
+/* result cards */
+a.res,.dr{border-radius:var(--r);border:1px solid var(--ln);border-left-width:6px;padding:12px 14px;box-shadow:var(--sh)}
+a.res b,.dr b{font-weight:650}
+a.res i{margin-top:8px}
+.chip{border-radius:99px;padding:8px 14px;box-shadow:0 1px 2px rgba(10,40,28,.06)}
+.chip.on{background:linear-gradient(180deg,#0f6a4e,#0b4a37);box-shadow:0 4px 10px rgba(11,74,55,.25)}
+.rw input[type=checkbox]{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:8px;border:2px solid #b2c3b9;background:#fff;margin:20px 0 0;position:relative;cursor:pointer;transition:all .12s}
+.rw input[type=checkbox]:checked{background:var(--g);border-color:var(--g)}
+.rw input[type=checkbox]:checked::after{content:"";position:absolute;left:7px;top:2px;width:6px;height:12px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg)}
+.bb{background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--ln)}
+.empty{background:rgba(255,255,255,.6);border:1px dashed #c3d0c9;border-radius:var(--r);margin:12px 0;padding:28px 12px}
+/* dashboard */
+.hero{background:linear-gradient(120deg,#08392a,#0f6a4e 70%,#14876a);border-radius:20px;box-shadow:0 10px 28px rgba(8,57,42,.25)}
+.kpi{border-radius:16px;border:1px solid var(--ln);border-top-width:4px}
+.sec{font-size:12px;color:#4d6358}
+.bar,.fun .tr,.dt .tr{border-radius:99px}
+@media(min-width:700px){body:not(.dm) .c{padding-top:6px}}
+.dr{border-left-color:#e0a800}.dr.bad{border-left-color:#b3261e}a.res.g-todo{border-left-color:#9aa8a1}a.res.g-room{border-left-color:#e0a800}a.res.g-ret{border-left-color:#3d9a54}a.res.g-chk{border-left-color:#3b78c4}a.res.g-done{border-left-color:#0b5d3b}a.res.g-bad{border-left-color:#b3261e}
+/* receiving desk v11 */
+.dr.late{border-left-color:#b3261e}.dr .who{color:var(--tx)}.dr .age{font-weight:700;color:#7a5b00}.dr .age.late{color:#b3261e}
+.chips .chip small{opacity:.75;font-size:11px}
+.dsum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--mu);margin-top:6px}.dsum b{color:var(--tx)}
+/* v12 */
+.tn{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.tn:empty{display:none}
+.tn a{display:inline-flex;align-items:center;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24)}
+.tn a:hover{background:rgba(255,255,255,.28)}
+.dk .bbi{max-width:560px}
+.dgrid{display:grid;grid-template-columns:1fr;gap:0 14px}
+.dtool{display:grid;grid-template-columns:1fr;gap:0 12px}.dtool label{margin-top:0}.dtool>div+div label{margin-top:12px}
+@media(min-width:900px){.dk .dgrid{grid-template-columns:1fr 1fr}.dtool{grid-template-columns:2fr 1fr 1fr}.dtool>div+div label{margin-top:0}}
+.dk .kpis{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.dk h2{margin-top:20px}
+.dr{transition:box-shadow .12s,transform .08s}.dr:hover{box-shadow:0 2px 4px rgba(10,40,28,.08),0 10px 24px rgba(10,40,28,.10)}
+.rw input[type=checkbox]:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+
+/* handover notice (invigilator, waiting for Exam Office OK) */
+.handover{background:#fff6dc;border:1.5px solid #f0c24a;border-left-width:6px;border-left-color:#e0a800}
+.handover .ho-t{font-size:15px;font-weight:700;color:#7a5b00;margin-bottom:4px}.handover .ho-b{font-size:15px;line-height:1.5;color:#3d3200}
+
+.tcf{display:flex;align-items:flex-start;gap:10px;background:#eef4fb;border:1.5px solid #b9d0ea;border-radius:12px;padding:11px 12px;margin:12px 0 0;font-weight:500;font-size:14px;line-height:1.4;color:#1c3d66;cursor:pointer}
+.tcf input{flex:none;width:22px;height:22px;min-height:0;margin:1px 0 0;padding:0;accent-color:#0b4a37}
+
+/* completion popup */
+.pop{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,30,22,.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:fadein .15s ease both}
+.pcard{width:100%;max-width:360px;background:#fff;border-radius:22px;padding:24px 20px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:popin .2s cubic-bezier(.2,1.2,.4,1) both}
+.pi{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;background:#dcf1e3;color:#0b5d3b;font-size:32px;line-height:60px;font-weight:700}
+.pcard.pw .pi{background:#fff2cc;color:#7a5b00}
+.pt{font-size:20px;font-weight:700;color:var(--tx)}.pm{font-size:15px;line-height:1.45;color:var(--mu);margin-top:8px}.pcard.pw .pm{color:#5c4600;font-weight:600}
+.pcard button{margin-top:16px}
+@keyframes fadein{from{opacity:0}to{opacity:1}}@keyframes popin{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:none}}
+
+.okbox{background:#e3f4ea;border:1.5px solid #9fd3b3;border-left:6px solid #0b5d3b}.okbox .ho-t{color:#0b5d3b}.okbox .ho-b{color:#1c3d2b;font-size:14px}
+</style></head><body>
+<div class="top"><div class="th"><h1>Envelope Tracker</h1><div class="s">Exam Office</div><nav id="tn" class="tn"></nav></div></div>
+<div class="c"><div id="app"><div class="sk" style="height:22px;width:55%;margin:18px 0 8px"></div><div class="sk" style="height:150px;margin:12px 0"></div><div class="sk" style="height:56px"></div></div></div>
+<div id="bb" class="bb"></div>
+<script>
+/* Stand-in for google.script.run: each call goes to the Apps Script web app named in the link (?a=...) as plain text. */
+/* Used only when the link has no ?a=... part, so the home link can be just the page address. Same ID as in Setup B6 (/macros/s/THIS PART/exec). */
+var DEFAULT_A='AKfycbyrh9jmOp6Kw6EjuAKg8CLZv6d274zaMhXT-Hfzzpt76Mxt4z6ZJDjXN0nGGlaF40NM';
+var Q=new URLSearchParams(location.search),API='https://script.google.com/macros/s/'+(Q.get('a')||DEFAULT_A)+'/exec';
+(function(){
+  /* read-only calls are retried once by themselves if the network drops (safe: they change nothing) */
+  var READS={teacherLookup:1,envelopeScanInfo:1,envelopeSearch:1,envelopeDashboard:1,envelopeDeskList:1};
+  function mk(ok,bad){return new Proxy({},{get:function(t,n){
+    if(n==='withSuccessHandler')return function(f){return mk(f,bad)};
+    if(n==='withFailureHandler')return function(f){return mk(ok,f)};
+    return function(){var args=Array.prototype.slice.call(arguments);
+      function go(att){
+        var ctl=new AbortController(),to=setTimeout(function(){ctl.abort()},45000);
+        fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:n,args:args}),credentials:'omit',redirect:'follow',signal:ctl.signal})
+        .then(function(r){return r.json()})
+        .then(function(j){clearTimeout(to);if(j&&j.ok){if(ok)ok(j.result)}else{var er=new Error((j&&j.error)||'The server did not accept the request.');er.final=true;throw er}})
+        .catch(function(e){clearTimeout(to);
+          var net=!e.final&&((e&&e.name==='AbortError')||(e&&e.message==='Failed to fetch'));
+          if(net&&READS[n]&&att<1){setTimeout(function(){go(att+1)},700);return}
+          var m=(e&&e.name==='AbortError')?'The server took too long. Check the internet and try again.':(e&&e.message==='Failed to fetch'?'Could not reach the server. Check the internet and try again.':(e&&e.message)||String(e));if(bad)bad({message:m});});
+      }
+      go(0);};}})}
+  window.google={script:{run:mk(null,null)}};
+})();
+</script>
+<script>
+if(Q.get('d')==='1'&&!Q.get('e'))document.body.className='dm';
+else if(Q.get('x')==='1'&&!Q.get('e'))document.body.className='dm dk';
+var ID=Q.get('e')||'',KEY=Q.get('k')||'',A=Q.get('a')||DEFAULT_A;
+var $=function(x){return document.getElementById(x)};
+var note='',o=null,busy=false,showFix=false,showSeat=false,showUndo=false,dash=null,dashT=null,dsC='',dpP='',DM=(Q.get('d')==='1'),DESK=(Q.get('x')==='1'&&!Q.get('e')),msg='',kind='',res=null,filt='all',searched=false,stale=false;
+var emp='',empName='',empNote='',eState='',eCan=false,tchk=false;
+var S={emp:'',n:'',a:'0',m:'',tn:'',st:'',pin:'',q:'',d:'',sn:'',ss:'',sp:'',us:'',up:'',rs:'',rp:'',xs:'',xp:'',ms:'',mp:'',mq:'0',ds:'',dp:''};
+/* FS = this envelope page was opened from the manual search. rem = the employee code is remembered in this browser tab (never the PIN). */
+var FS=Q.get('s')==='1',rem=true;
+try{localStorage.removeItem('envEmp');emp=sessionStorage.getItem('envEmp')||''}catch(e){}
+S.emp=emp;
+try{S.rs=sessionStorage.getItem('envRs')||''}catch(e){}
+function today(){var d=new Date(),m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(x<10?'0':'')+x}
+S.d='';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function row(a,b){return '<div class="row"><span>'+esc(a)+'</span><b>'+esc(b)+'</b></div>'}
+function grab(){for(var k in S){var e=$('f_'+k);if(e)S[k]=e.value}}
+function say(m,k){msg=m;kind=k||'';render();window.scrollTo(0,0)}
+function fail(e){busy=false;say('Error: '+(e&&e.message?e.message:e),'err')}
+function setBusy(b){busy=b;var bs=document.getElementsByTagName('button');for(var i=0;i<bs.length;i++)bs[i].disabled=b;var p=$('go');if(p&&b)p.textContent='Please wait...'}
+function syncRes(r){if(r&&r.found&&r.status&&res)res.forEach(function(x){if(x.id===r.id)x.status=r.status})}
+function cacheInfo(id,r){try{var c={};for(var k in r)c[k]=r[k];c._t=Date.now();sessionStorage.setItem('envI:'+id,JSON.stringify(c))}catch(e){}}
+function setInfo(r,nocache){syncRes(r);o=r;tchk=false;S.n=(r.sheets===''||r.sheets==null)?'':String(r.sheets);S.a=(r.absent===''||r.absent==null)?'0':String(r.absent);S.m='';S.mq='0';if(r.req){S.n=String(r.req.filled);S.a=String(r.req.absent);S.mq=String(r.req.mcq||0)}
+  if(!nocache&&r&&r.found&&ID)cacheInfo(ID,r)}
+function skel(){return '<div class="sk" style="height:22px;width:60%;margin:18px 0 8px"></div><div class="sk" style="height:38px;margin:12px 0"></div><div class="sk" style="height:200px;margin:12px 0"></div><div class="sk" style="height:140px"></div>'}
+function blocked(){if(stale){say('Updating this envelope, try again in a moment.','err');return true}return false}
+/* run fn over ids with up to n at a time */
+function pool(ids,n,fn,prog,end){var i=0,run=0,fin=0;
+  function go(){while(run<n&&i<ids.length){(function(id){run++;fn(id,function(){run--;fin++;prog(fin);if(fin===ids.length)end();else go()})})(ids[i++])}}
+  if(!ids.length)end();else go()}
+/* ---- status groups (used for the colour bar and the filter buttons on the home page) ---- */
+var GL={todo:'Not received',acc:'Awaiting Exam Office OK',room:'With invigilator',ret:'Returned',chk:'Checked',done:'Verified'};
+function grp(s){s=String(s||'');
+  if(s==='Verified')return 'done';
+  if(s==='Awaiting verification'||/MISMATCH/.test(s))return 'chk';
+  if(s==='Awaiting Exam Office OK')return 'room';
+  if(s==='Returned OK'||s==='Returned: enter count'||s==='CHECK COUNT')return 'ret';
+  if(s==='With invigilator')return 'room';return 'todo'}
+function isBad(s){return s==='CHECK COUNT'||/MISMATCH/.test(String(s||''))}
+/* ---- employee identity (one login, remembered on this phone tab) ---- */
+function applyEmp(r){if(r.found){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';
+    try{sessionStorage.setItem('envEmpI',JSON.stringify({emp:emp,name:r.name,source:r.source}))}catch(e){}}else{eState='new';eCan=r.canRegister===true}}
+function eLookup(){
+  grab();emp=S.emp.trim();try{sessionStorage.setItem('envEmp',emp)}catch(e){}
+  if(!emp){say('Enter your employee code.','err');return}
+  setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;msg='';kind='';applyEmp(r);render()}).withFailureHandler(fail).teacherLookup(emp,ID,KEY);
+}
+function eRegister(){
+  grab();if(!S.tn.trim()){say('Enter your full name.','err');return}
+  setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;if(r.ok){eState='found';empName=r.name;empNote=r.source==='Listed'?'':'Self-registered, not yet verified by the Exam Office';msg='';kind='';try{sessionStorage.setItem('envEmpI',JSON.stringify({emp:emp,name:r.name,source:r.source}))}catch(e){}}else{msg=r.msg;kind='err'}render()}).withFailureHandler(fail).teacherRegister(emp,S.tn.trim(),ID,KEY);
+}
+function eChange(){eState='';empName='';empNote='';emp='';S.emp='';res=null;searched=false;note='';sel={};try{sessionStorage.removeItem('envEmp');sessionStorage.removeItem('envEmpI')}catch(e){}render()}
+function idBox(inner){
+  var h='<div class="box">';
+  if(eState==='found')h+=row('Employee',empName+' ('+emp+')')+(empNote?'<div class="hint">'+esc(empNote)+'</div>':'')+inner+'<button class="lnk" onclick="eChange()">Not you? Change employee code</button>';
+  else if(eState==='new'&&!eCan)h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. '+(ID?'Please contact the Exam Office to have your code added.':'Scan any envelope QR once to register, or ask the Exam Office.')+'</div><button class="lnk" onclick="eChange()">Wrong code? Go back</button>';
+  else if(eState==='new')h+='<div class="hint" style="margin:0 0 6px">Employee code '+esc(emp)+' is not in the teachers list. Register yourself once:</div><label for="f_tn">Your full name</label><input id="f_tn" type="text" style="font-size:16px" value="'+esc(S.tn)+'"><button id="go" onclick="eRegister()">Register and continue</button><button class="lnk" onclick="eChange()">Wrong code? Go back</button>';
+  else h+='<label for="f_emp" style="margin-top:0">Your employee code</label><input id="f_emp" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.emp)+'"><button id="go" onclick="eLookup()">Continue</button>';
+  return h+'</div>';
+}
+/* ---- live checks ---- */
+function live(){
+  if(!o)return;grab();
+  var el=$('chk');
+  if(el){var n=S.n,a=S.a;if(n===''){el.className='chk';el.textContent=''}else{var q=(S.mq===''||isNaN(Number(S.mq)))?0:Number(S.mq),t=Number(n)+(a===''?0:Number(a))+q,tx=n+' filled + '+(a||0)+' absent'+(q?' + '+q+' UMC':'');
+    if(t===Number(o.seated)){el.className='chk good';el.textContent=tx+' = '+t+' (matches '+o.seated+' seated)'}
+    else{el.className='chk bad';el.textContent=tx+' = '+t+', but '+o.seated+' seated. Will be flagged.'}}}
+}
+function countForm(btnText){
+  return '<div class="two"><div><label for="f_n">Filled books returned</label><input id="f_n" type="number" inputmode="numeric" min="0" value="'+esc(S.n)+'" oninput="live()"></div>'
+    +'<div><label for="f_a">Students absent</label><input id="f_a" type="number" inputmode="numeric" min="0" value="'+esc(S.a)+'" oninput="live()"></div></div>'
+    +'<label for="f_mq">UMC cases (book not in envelope)</label><input id="f_mq" type="number" inputmode="numeric" min="0" value="'+esc(S.mq)+'" oninput="live()">'
+    +'<div class="hint">Filled means used, not blank. If the book of a student was taken for an Unfair Means Case (UMC) and is not in this envelope, enter how many (else leave 0). Filled + absent + UMC = seated.</div><div id="chk" class="chk"></div><button id="go" onclick="act(\'return\')">'+btnText+'</button>';
+}
+function stageBox(){
+  var st=o.stage;
+  if(st==='done')return '<div class="box big">&#10003; All done. Award list received and verified by the Exam Office.</div>';
+  if(st==='verify'){
+    var w='';
+    if(Number(o.sheets)+(Number(o.absent)||0)!==Number(o.seated))w+='<div class="warn">Returned counts do not match: '+esc(o.sheets)+' filled + '+esc(o.absent)+' absent, but '+esc(o.seated)+' seated.</div>';
+    if(o.markedBooks!==''&&o.markedBooks!=null&&Number(o.markedBooks)!==Number(o.sheets))w+='<div class="warn">Checked books ('+esc(o.markedBooks)+') do not match filled books returned ('+esc(o.sheets)+').</div>';
+    return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. '+'The teacher has checked the papers, but '+'this envelope is NOT final until the award list is received.</div>'+w
+      +'<label for="f_st">Your employee code</label><input id="f_st" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.st)+'">'
+      +'<label for="f_pin">Your PIN</label><input id="f_pin" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.pin)+'">'
+      +'<button id="go" onclick="act(\'verify\')">Award list received: verify</button></div>';
+  }
+  if(showFix&&(st==='return'||st==='mark'||st==='accept'))return idBox(countForm(o.returned?'Update counts':'Submit return')+'<button class="lnk" onclick="showFix=false;render()">Back</button>');
+  if(st==='accept')return acceptBox();
+  if(st==='receive')return idBox('<button id="go" onclick="act(\'receive\')">Mark received</button><div class="hint">Tap when you take the envelope from the Exam Office.</div>');
+  if(st==='return')return idBox(countForm('Submit return'));
+  return idBox('<div class="hint" style="margin:0 0 4px">Filled books returned from the room: <b>'+esc(o.sheets)+'</b></div>'
+    +'<label class="tcf"><input type="checkbox" id="f_tc"'+(tchk?' checked':'')+' onchange="tchk=this.checked"><span>I am the <b>teacher</b> who checked these answer books. (Invigilators: do not use this step.)</span></label>'
+    +'<label for="f_m">Answer books CHECKED by the teacher</label><input id="f_m" type="number" inputmode="numeric" min="0" value="'+esc(S.m)+'" oninput="live()">'
+    +'<div id="chk2" class="chk"></div><button id="go" onclick="act(\'mark\')">Mark papers checked</button><button class="lnk" onclick="showFix=true;render()">Fix the returned counts</button>');
+}
+/* ---- change student strength (Exam Office only: employee code + PIN) ---- */
+function seatBox(){
+  if(!o||o.stage==='done')return '';
+  if(!showSeat)return '<button class="lnk" onclick="grab();showSeat=true;S.sn=String(o.seated);render()">Student strength is wrong? Change it (Exam Office)</button>';
+  return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. Current strength: <b>'+esc(o.seated)+'</b>. The new number is used for all checks and stays after the next Sync.</div>'
+    +'<label for="f_sn">New number of students (seated)</label><input id="f_sn" type="number" inputmode="numeric" min="0" value="'+esc(S.sn)+'">'
+    +'<label for="f_ss">Your employee code</label><input id="f_ss" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ss)+'">'
+    +'<label for="f_sp">Your PIN</label><input id="f_sp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.sp)+'">'
+    +'<button id="go2" onclick="setSeat()">Save new strength</button><button class="lnk" onclick="showSeat=false;S.sp=\'\';render()">Cancel</button></div>';
+}
+function handoverBanner(){return '<div class="box handover"><div class="ho-t">&#9888; Not final yet</div><div class="ho-b">Take this envelope to the <b>Exam Officer</b> now and get the receiving confirmed.<br>Your return is complete only after the Exam Officer confirms it.</div></div>'}
+function acceptBox(){
+  var r=o.req||{},rq=Number(r.mcq)||0,mis=Number(r.filled)+(Number(r.absent)||0)+rq!==Number(o.seated);
+  /* The invigilator's phone never asks for an Exam Office PIN: the OK is given only at the Exam Office Receiving Desk. */
+  return '<div class="box">'+row('Counts submitted',esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':''))+row('Submitted',esc(r.at)+(r.by?' by '+esc(r.by):''))
+    +(mis?'<div class="warn">Counts do not match: '+esc(r.filled)+' filled + '+esc(r.absent)+' absent'+(rq?' + '+rq+' UMC':'')+', but '+esc(o.seated)+' seated. The Exam Officer may send it back.</div>':'')
+    +'<div class="hint">If the Exam Officer sends it back, or a count is wrong, open this page again and fix the counts.</div>'
+    +'<button class="lnk" onclick="showFix=true;render()">Fix the counts</button></div>';
+}
+function decideReturn(dc){
+  if(busy||blocked())return;grab();
+  if(!S.rs.trim()||!S.rp.trim()){say('Enter your Exam Office employee code and PIN.','err');return}
+  try{sessionStorage.setItem('envRs',S.rs.trim())}catch(e){}
+  if(!confirm(dc==='ok'?'Confirm: you have the envelope in your hand and the counts are right?':'Send this return back to the invigilator?'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.rp='';
+      if(r.info){setInfo(r.info);if(r.ok)showFix=false}
+      if(r.ok)SC={};
+      render();window.scrollTo(0,0);
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeDecideReturn(ID,KEY,S.rs.trim(),S.rp,dc);
+  })();
+}
+function undoBox(){
+  if(!o||o.stage!=='mark')return '';
+  if(!showUndo)return '<button class="lnk" onclick="grab();showUndo=true;render()">Returned by mistake? Undo return (Exam Office)</button>';
+  return '<div class="box"><div class="hint" style="margin:0 0 6px">Exam Office only. Use this if the envelope is still with the invigilator. The status goes back to "With invigilator" and the counts are cleared. The wrong entry stays in the log.</div>'
+    +'<label for="f_us" style="margin-top:0">Your employee code</label><input id="f_us" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.us)+'">'
+    +'<label for="f_up">Your PIN</label><input id="f_up" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go3" onclick="undoReturn()">Cancel the return</button><button class="lnk" onclick="showUndo=false;S.up=\'\';render()">Back</button></div>';
+}
+function undoReturn(){
+  if(busy||blocked())return;grab();
+  if(!S.us.trim()||!S.up.trim()){say('Enter your employee code and PIN.','err');return}
+  if(!confirm('Cancel the RETURNED entry? The envelope goes back to "With invigilator".'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.up='';
+      if(r.info){setInfo(r.info);if(r.ok){showUndo=false;showFix=false}}
+      if(r.ok)SC={};
+      render();window.scrollTo(0,0);
+      if(r.ok)popup('Return cancelled',r.msg||'');
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeUndoReturn(ID,KEY,S.us.trim(),S.up);
+  })();
+}
+function setSeat(){
+  if(busy||blocked())return;grab();
+  var n=S.sn.trim();
+  if(n===''||isNaN(Number(n))||Number(n)<0||Math.floor(Number(n))!==Number(n)){say('Enter the number of students as a whole number (0 or more).','err');return}
+  if(!S.ss.trim()||!S.sp.trim()){say('Enter your employee code and PIN.','err');return}
+  if(!confirm('Change strength from '+o.seated+' to '+n+'?'))return;
+  setBusy(true);var tries=0;
+  (function send(){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.ok&&/System busy/.test(r.msg||'')&&tries<4){tries++;setTimeout(send,1500+tries*1000);return}
+      busy=false;msg=r.msg;kind=r.ok?'ok':'err';S.sp='';
+      if(r.info){syncRes(r.info);o=r.info;cacheInfo(ID,r.info)}   /* keep what was typed in the other boxes */
+      if(r.ok){showSeat=false;SC={}}
+      render();window.scrollTo(0,0);
+      if(r.ok)popup('Strength changed',r.msg||'');
+    }).withFailureHandler(function(e){
+      if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,2000);return}
+      fail(e);
+    }).envelopeSetSeated(ID,KEY,n,S.ss.trim(),S.sp);
+  })();
+}
+/* ---- dashboard: progress by date and slot ---- */
+var DC={done:'#0b5d3b',chk:'#3b78c4',ret:'#3d9a54',acc:'#8e5bd1',room:'#e0a800',todo:'#9aa8a1'},DK=['done','chk','ret','acc','room','todo'];
+function barHtml(o){
+  var t=o.total||1,b='<div class="bar" role="img" aria-label="'+o.done+' verified of '+o.total+'">';
+  DK.forEach(function(k){if(o[k])b+='<i style="width:'+(o[k]*100/t)+'%;background:'+DC[k]+'"></i>'});
+  b+='</div><div class="leg">';
+  DK.forEach(function(k){b+='<span><u style="background:'+DC[k]+'"></u>'+GL[k]+' <b>'+o[k]+'</b></span>'});
+  return b+'</div>'+(o.bad?'<div class="warn">'+o.bad+' with a count problem (CHECK COUNT / MISMATCH)</div>':'');
+}
+/* v12: the dashboard login also survives a refresh (this tab only; cleared by Log out, after 2 hours without a refresh, or when the tab is closed) */
+var dashRes=false;
+function dashSave(){if(!dsC||!dpP)return;try{sessionStorage.setItem('envDash',JSON.stringify({c:dsC,p:dpP,t:Date.now()}))}catch(e){}}
+function restoreDash(){
+  var sv=null;try{sv=JSON.parse(sessionStorage.getItem('envDash')||'null')}catch(e){}
+  if(!sv||!sv.c||!sv.p)return;
+  if(Date.now()-(sv.t||0)>7200000){try{sessionStorage.removeItem('envDash')}catch(e2){}return}
+  dsC=sv.c;dpP=sv.p;dashRes=true;render();loadDash('');
+}
+function loadDash(d,quiet){
+  if(busy&&!quiet)return;if(!quiet)setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;dashRes=false;dash=r;msg='';kind='';dashSave();
+      if(!dashT)dashT=setInterval(function(){if(dash&&!busy&&!document.hidden)loadDash('',true)},20000);render()})
+    .withFailureHandler(function(e){if(quiet)return;busy=false;dashRes=false;var em=(e&&e.message)||String(e);if(!dash){dsC='';dpP='';if(/Wrong employee code|Too many/.test(em)){try{sessionStorage.removeItem('envDash')}catch(x){}}}msg='Error: '+em;kind='err';render()}).envelopeDashboard(dsC,dpP,d||(dash&&dash.date)||'');
+}
+function dashLogin(){
+  if(busy)return;grab();
+  if(!S.ds.trim()||!S.dp.trim()){msg='Enter your employee code and PIN.';kind='err';render();return}
+  dsC=S.ds.trim();dpP=S.dp;S.dp='';loadDash('');
+}
+function dashOut(){clearInterval(dashT);dashT=null;dash=null;dashRes=false;dsC='';dpP='';S.dp='';msg='';kind='';try{sessionStorage.removeItem('envDash')}catch(e){}render()}
+function pct(a,b){return b?Math.round(a*100/b):0}
+function ringSvg(p){var r=44,c=2*Math.PI*r;return '<svg width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="'+p+' percent verified"><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="#8fe3b5" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*p/100)+' '+c+'" transform="rotate(-90 56 56)"/><text x="56" y="63" text-anchor="middle" font-size="24" font-weight="700" fill="#fff">'+p+'%</text></svg>'}
+function dashScreen(){
+  var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!dash&&dashRes)return h+skel();
+  if(!dash)return h+'<h2>Executive Dashboard</h2><div class="sub">Exam Office and management only.</div><div class="box"><label for="f_ds" style="margin-top:0">Your employee code</label><input id="f_ds" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.ds)+'">'
+    +'<label for="f_dp">Your PIN</label><input id="f_dp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go" onclick="dashLogin()">Open dashboard</button></div>';
+  return h+dashHtml()+'<div class="two"><button class="lnk" onclick="dashOut()">Log out</button><a class="lnk" style="display:block;text-align:center;text-decoration:none" href="?a='+enc(A)+'">&#8249; Back to Home</a></div>';
+}
+function slotState(x){
+  if(x.done===x.total&&x.total)return '<span class="pill p-ok">Complete</span>';
+  if(x.bad)return '<span class="pill p-at">Needs attention</span>';
+  if(x.todo===x.total)return '<span class="pill p-no">Not started</span>';
+  return '<span class="pill p-go">In progress</span>';
+}
+function waitTxt(m){if(m==null)return 'None waiting';var h=Math.floor(m/60),x=m%60;return h?h+' h '+x+' m':x+' min'}
+function dashHtml(){
+  var t=dash.totals,c=dash.cycle,p=pct(t.done,t.total);
+  var recv=t.total-t.todo,retd=t.ret+t.chk+t.done,chkd=t.chk+t.done;
+  var absP=t.seatedRet?(t.absent*100/t.seatedRet).toFixed(1):'0.0';
+  var h='<h2>Executive Dashboard</h2><div class="sub">'+esc(dash.label)+' &middot; updated '+esc(dash.at)+' &middot; refreshes every 20 s</div>';
+  h+='<label for="f_dd">Exam date</label><select id="f_dd" onchange="loadDash(this.value)">';
+  dash.dates.forEach(function(x){h+='<option value="'+esc(x.dk)+'"'+(x.dk===dash.date?' selected':'')+'>'+esc(x.label)+'</option>'});
+  h+='</select>';
+  h+='<div class="hero">'+ringSvg(p)+'<div><div class="t">Verified on this date</div><div class="v">'+t.done+' of '+t.total+' envelopes</div><div class="d">'+t.seated.toLocaleString()+' students seated across '+dash.slots.length+' slot'+(dash.slots.length===1?'':'s')+'</div></div></div>';
+  h+='<div class="kpis">'
+    +'<div class="kpi info"><div class="k">Returned from rooms</div><div class="n">'+pct(retd,t.total)+'%</div><div class="s">'+retd+' of '+t.total+' envelopes</div></div>'
+    +'<div class="kpi '+(t.bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+t.bad+'</div><div class="s">'+(t.bad?'CHECK COUNT / MISMATCH':'All counts match')+'</div></div>'
+    +'<div class="kpi warn2"><div class="k">Awaiting award list</div><div class="n">'+t.chk+'</div><div class="s">Longest wait: '+esc(waitTxt(dash.waitMin))+'</div></div>'
+    +'<div class="kpi '+(t.acc?'warn2':'good')+'"><div class="k">Awaiting Exam Office OK</div><div class="n">'+t.acc+'</div><div class="s">'+(t.acc?'Longest wait: '+esc(waitTxt(dash.accWaitMin)):'Nothing waiting')+'</div></div>'
+    +'<div class="kpi"><div class="k">Absent (returned rooms)</div><div class="n">'+absP+'%</div><div class="s">'+t.absent.toLocaleString()+' of '+t.seatedRet.toLocaleString()+' students</div></div>'
+    +'</div>';
+  h+='<div class="two2"><div class="box"><div class="sec" style="margin-top:0">Progress of the day</div>';
+  [['Received',recv,'#e0a800'],['Returned',retd,'#3d9a54'],['Checked',chkd,'#3b78c4'],['Verified',t.done,'#0b5d3b']].forEach(function(f){
+    h+='<div class="fun"><span>'+f[0]+'</span><div class="tr"><i style="width:'+pct(f[1],t.total)+'%;background:'+f[2]+'"></i></div><b>'+pct(f[1],t.total)+'%</b></div>'});
+  h+='<div class="hint">Share of the day\'s '+t.total+' envelopes that have reached each step.</div></div>';
+  h+='<div class="box"><div class="sec" style="margin-top:0">Whole exam cycle</div>';
+  dash.byDate.forEach(function(d){h+='<div class="dt'+(d.dk===dash.date?' on':'')+'" onclick="loadDash(\''+esc(d.dk)+'\')"><span>'+esc(d.label)+'</span><div class="tr"><i style="width:'+pct(d.done,d.total)+'%"></i></div><span>'+d.done+'/'+d.total+(d.bad?' &#9888;':'')+'</span></div>'});
+  h+='<div class="hint">'+c.done+' of '+c.total+' verified in all ('+pct(c.done,c.total)+'%). Tap a date to open it.</div></div></div>';
+  h+='<div class="sec">Slots on this date</div><div class="two2">';
+  dash.slots.forEach(function(x){h+='<div class="box"><div class="sh"><b>'+esc(x.slot)+'</b>'+slotState(x)+'</div><div class="hint" style="margin:2px 0 0">'+x.done+' of '+x.total+' verified ('+pct(x.done,x.total)+'%) &middot; '+x.seated.toLocaleString()+' students</div>'+barHtml(x)+'</div>'});
+  if(!dash.slots.length)h+='<div class="empty">No envelopes on this date.</div>';
+  return h+'</div>';
+}
+/* ---- Exam Office Receiving Desk (?x=1): log in once, receive everything that was returned in one go ---- */
+/* v12: the login survives a page refresh (this browser tab only; cleared by Log out, 10 minutes without use, or closing the tab) */
+var desk=null,xC='',xP='',dsel={},vsel={},dtab='ok',dfil='',dq='',dsort='old',tch=[],deskT=null,deskIdle=null,deskRes=false,lastSlot='',lastBody='';
+var DESK_IDLE=600000;
+function deskSave(){if(!xC||!xP)return;try{sessionStorage.setItem('envDesk',JSON.stringify({c:xC,p:xP,t:Date.now(),tab:dtab,q:dq,f:dfil,s:dsort}))}catch(e){}}
+function deskTouch(){clearTimeout(deskIdle);deskIdle=setTimeout(function(){deskOut('Logged out after 10 minutes without use.')},DESK_IDLE);deskSave()}
+function deskOut(m){clearInterval(deskT);deskT=null;clearTimeout(deskIdle);desk=null;deskRes=false;xC='';xP='';dsel={};vsel={};dtab='ok';dfil='';dq='';dsort='old';S.xp='';lastSlot='';lastBody='';
+  try{sessionStorage.removeItem('envDesk')}catch(e){}
+  msg=m||'';kind=m?'err':'';render()}
+function deskLogin(){
+  if(busy)return;grab();
+  if(!S.xs.trim()||!S.xp.trim()){msg='Enter your Exam Office employee code and PIN.';kind='err';render();return}
+  xC=S.xs.trim();xP=S.xp;S.xp='';loadDesk(false,true);
+}
+function restoreDesk(){
+  var sv=null;try{sv=JSON.parse(sessionStorage.getItem('envDesk')||'null')}catch(e){}
+  if(!sv||!sv.c||!sv.p)return;
+  if(Date.now()-(sv.t||0)>=DESK_IDLE){try{sessionStorage.removeItem('envDesk')}catch(e2){}msg='Logged out after 10 minutes without use.';kind='err';render();return}
+  xC=sv.c;xP=sv.p;dtab=sv.tab==='chk'?'chk':'ok';dq=sv.q||'';dfil=sv.f||'';dsort=sv.s||'old';
+  deskRes=true;render();loadDesk(false,false);   /* nothing is ticked after a refresh */
+}
+function loadDesk(quiet,first){
+  if(quiet&&busy)return;if(!quiet)setBusy(true);
+  google.script.run.withSuccessHandler(function(r){
+    if(!quiet){busy=false;deskTouch()}
+    deskRes=false;desk=r;
+    if(first){msg='';kind='';dsel={}}   /* nothing is ticked for the receiver: tick the envelopes you hold, or use Select all shown */
+    else Object.keys(dsel).forEach(function(id){if(!r.items.some(function(x){return x.id===id}))delete dsel[id]});
+    Object.keys(vsel).forEach(function(id){if(!(r.chk||[]).some(function(x){return x.id===id}))delete vsel[id]});
+    if(!deskT)deskT=setInterval(function(){if(desk&&!busy&&!document.hidden)loadDesk(true)},10000);
+    if(quiet&&$('dbody'))renderDeskBody();else render();   /* the 20 s refresh only redraws the list, so typing in the search box is never interrupted */
+  }).withFailureHandler(function(e){
+    var em=(e&&e.message)||String(e);
+    if(quiet){var t=$('dat');if(t)t.textContent='could not update, retrying';return}
+    busy=false;deskRes=false;
+    if(!desk){xC='';xP='';if(/Wrong employee code|Too many/.test(em)){try{sessionStorage.removeItem('envDesk')}catch(x){}}}
+    msg='Error: '+em;kind='err';render();
+  }).envelopeDeskList(xC,xP);
+}
+function refreshNow(){if(busy||!desk)return;var t=$('dat');if(t)t.textContent='updating...';deskTouch();loadDesk(true)}
+function curList(){return dtab==='chk'?(desk.chk||[]):desk.items}
+function curSel(){return dtab==='chk'?vsel:dsel}
+function hayOf(x){return [x.emp,x.by,x.code,x.title,x.program,x.room,x.date,x.slot,x.inv,x.ins].join(' ').toLowerCase()}
+/* indexes of the rows that pass the slot filter and the search words, in the chosen order */
+function vis(l){
+  l=l||curList();var tk=dq.toLowerCase().split(/[\s,;]+/).filter(Boolean),o=[];
+  l.forEach(function(x,i){
+    if(dfil&&(x.dk+'|'+x.slot)!==dfil)return;
+    var h=hayOf(x);for(var j=0;j<tk.length;j++)if(h.indexOf(tk[j])<0)return;
+    o.push(i)});
+  if(dsort==='new')o.sort(function(a,b){return l[b].ts-l[a].ts});
+  else if(dsort==='teacher')o.sort(function(a,b){return String(l[a].by).localeCompare(String(l[b].by))||l[a].ts-l[b].ts});
+  else if(dsort==='room')o.sort(function(a,b){return String(l[a].room).localeCompare(String(l[b].room),undefined,{numeric:true})});
+  else o.sort(function(a,b){return l[a].ts-l[b].ts});
+  return o}
+/* a ticked envelope that is no longer on screen is un-ticked, so a bulk action can only touch what the receiver sees */
+function pruneSel(){var l=curList(),ok={},s=curSel();vis(l).forEach(function(i){ok[l[i].id]=1});Object.keys(s).forEach(function(id){if(!ok[id])delete s[id]})}
+function fixFil(){if(!desk)return;if(dfil&&!curList().some(function(x){return x.dk+'|'+x.slot===dfil}))dfil=''}
+function ageTxt(ts){if(!ts)return '';var m=Math.max(0,Math.round((Date.now()-ts)/60000));return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' m'}
+function setDq(v){dq=v;deskTouch();pruneSel();renderDeskBody()}
+function setDsort(v){dsort=v;deskTouch();renderDeskBody()}
+function setDfil(v){dfil=v;deskTouch();pruneSel();renderDeskBody()}
+function pickT(i){dq=i<0?'':String(tch[i].key);var e=$('f_dq');if(e)e.value=dq;deskTouch();pruneSel();renderDeskBody()}
+function setDtab(t){dtab=t;dfil='';dsel={};vsel={};deskTouch();renderDeskBody()}
+function dtg(id,c){var s=curSel();if(c)s[id]=1;else delete s[id];deskTouch();var t=$('dtick');if(t)t.textContent=Object.keys(s).length;updBar()}
+function deskAll(){var l=curList(),s=curSel();vis(l).forEach(function(i){if(!l[i].mis)s[l[i].id]=1});deskTouch();renderDeskBody()}
+function deskNone(){if(dtab==='chk')vsel={};else dsel={};deskTouch();renderDeskBody()}
+/* only the parts that changed are redrawn, so an open drop-down or the chip scroll position is not disturbed by the 20 s refresh */
+function renderDeskBody(){
+  var a=$('dtabs'),b=$('dbody'),sl=$('dslot');if(!desk||!a||!b||!sl){render();return}
+  fixFil();
+  a.innerHTML=deskTabsHtml();
+  var s=deskSlotHtml();if(s!==lastSlot){sl.innerHTML=s;lastSlot=s}
+  var h=deskBodyHtml();if(h!==lastBody){b.innerHTML=h;lastBody=h}
+  var t=$('dat');if(t)t.textContent='updated '+desk.at;
+  updBar();
+}
+function deskTabsHtml(){
+  var C=dtab==='chk',it=desk.items,ck=desk.chk||[],bad=0,oldest=0;
+  it.forEach(function(x){if(x.mis)bad++;if(x.ts&&(!oldest||x.ts<oldest))oldest=x.ts});
+  return '<div class="kpis">'
+    +'<div class="kpi warn2"><div class="k">Waiting for OK</div><div class="n">'+it.length+'</div><div class="s">'+(oldest?'Longest wait: '+esc(ageTxt(oldest)):'Nothing waiting')+'</div></div>'
+    +'<div class="kpi '+(bad?'bad':'good')+'"><div class="k">Count problems</div><div class="n">'+bad+'</div><div class="s">'+(bad?'Look at these first':'All counts match')+'</div></div>'
+    +'<div class="kpi info"><div class="k">Checked, award list pending</div><div class="n">'+ck.length+'</div><div class="s">Verify when the list is in hand</div></div></div>'
+    +'<div class="tabs"><button class="'+(!C?'on':'')+'" onclick="setDtab(\'ok\')">Waiting for OK ('+it.length+')</button><button class="'+(C?'on':'')+'" onclick="setDtab(\'chk\')">Checked ('+ck.length+')</button></div>';
+}
+function deskSlotHtml(){
+  var L=curList(),seen={},keys=[],opts='<option value="">All dates and slots ('+L.length+')</option>';
+  L.forEach(function(x){var k=x.dk+'|'+x.slot;if(!seen[k]){seen[k]={x:x,n:0};keys.push(k)}seen[k].n++});
+  keys.sort(function(a,b){return a<b?-1:a>b?1:0});
+  keys.forEach(function(k){var e=seen[k];opts+='<option value="'+esc(k)+'"'+(dfil===k?' selected':'')+'>'+esc(e.x.date+' - '+e.x.slot)+' ('+e.n+')</option>'});
+  return '<label for="f_xf">Slot</label><select id="f_xf" onchange="setDfil(this.value)">'+opts+'</select>';
+}
+function deskBodyHtml(){
+  var C=dtab==='chk',L=curList(),s=curSel(),h='',v=vis(L),bad=0,late=0;
+  v.forEach(function(i){if(L[i].mis)bad++;if(L[i].ts&&(Date.now()-L[i].ts)>=2700000)late++});
+  /* one chip per teacher (employee code), inside the chosen slot */
+  var g={},order=[];
+  L.forEach(function(x){if(dfil&&(x.dk+'|'+x.slot)!==dfil)return;var key=x.emp||x.by||'?';if(!g[key]){g[key]={key:key,name:x.by,emp:x.emp,n:0};order.push(key)}g[key].n++});
+  tch=order.map(function(k){return g[k]}).sort(function(a,b){return b.n-a.n}).slice(0,15);
+  var cur=dq.trim().toLowerCase();
+  h+='<div class="box"><b>'+v.length+(v.length===L.length?'':' of '+L.length)+(C?' checked envelope':' envelope')+(L.length===1?'':'s')+(C?' waiting for the award list':' waiting for your OK')+'</b>'
+    +'<div class="dsum"><span>Ticked <b id="dtick">'+Object.keys(s).length+'</b></span>'+(bad?'<span style="color:#b3261e">Count problem <b style="color:#b3261e">'+bad+'</b></span>':'')+(late?'<span style="color:#b3261e">Waiting 45 min+ <b style="color:#b3261e">'+late+'</b></span>':'')+'</div>'
+    +'<div class="hint" style="margin:6px 0 0">'+(C?'The teacher has checked these papers. Verify only when the award list is in your hand. Nothing is ticked for you, and verifying is final.':'Nothing is ticked for you. Tick only the envelopes you have in your hand (or use Select all shown).')+'</div>';
+  if(tch.length>1){
+    h+='<div class="hint" style="margin-top:10px">Teachers (tap to show only theirs)</div><div class="chips"><button class="chip'+(cur?'':' on')+'" onclick="pickT(-1)">All teachers</button>';
+    tch.forEach(function(t,i){h+='<button class="chip'+(cur&&cur===String(t.key).toLowerCase()?' on':'')+'" onclick="pickT('+i+')">'+esc((t.name||t.key)+(t.emp?' ('+t.emp+')':''))+' <small>'+t.n+'</small></button>'});
+    h+='</div>';
+  }
+  h+='<div class="two"><button class="lnk" onclick="deskAll()">Select all shown (no problem)</button><button class="lnk" onclick="deskNone()">Clear selection</button></div></div>';
+  if(!v.length)h+='<div class="empty">'+(L.length?'Nothing matches this search or slot.':(C?'No checked envelope is waiting for the award list.':'Nothing is waiting. New returns appear here by themselves.'))+'</div>';
+  h+='<div class="dgrid">';
+  v.forEach(function(i){var x=L[i],on=s[x.id],age=ageTxt(x.ts),old=x.ts&&(Date.now()-x.ts)>=2700000;
+    h+='<div class="rw"><input type="checkbox" id="dc'+i+'" aria-label="Select envelope" '+(on?'checked ':'')+'onchange="dtg(\''+esc(x.id)+'\',this.checked)"><label for="dc'+i+'" class="dr'+(x.mis?' bad':(old?' late':''))+'"><b>'+esc(x.title)+'</b>'
+      +'<span>'+esc(x.code)+', '+esc(x.program)+' Sem '+esc(x.sem)+' &middot; Room '+esc(x.room)+'</span><span>'+esc(x.date)+', '+esc(x.slot)+'</span>'
+      +'<span>'+(C?'Checked by ':'Returned by ')+'<b class="who" style="display:inline">'+esc(x.by||'-')+'</b>'+(x.emp?' ('+esc(x.emp)+')':'')+'</span>'
+      +(C?'<span><b style="display:inline">Checked '+esc(x.cbooks)+' of '+esc(x.filled)+' filled books</b> ('+esc(x.absent)+' absent, seated '+esc(x.seated)+'), '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts do not match (checked / filled / absent / seated). Look at it before verifying.</div>':'')
+        :'<span><b style="display:inline">'+esc(x.filled)+' filled + '+esc(x.absent)+' absent'+(x.mq?' + '+esc(x.mq)+' UMC':'')+'</b> (seated '+esc(x.seated)+'), '+esc(x.at)+'</span>'
+         +(x.mis?'<div class="warn">Counts differ from seated. If you receive it, it is flagged CHECK COUNT.</div>':''))
+      +(age?'<span class="age'+(old?' late':'')+'">Waiting '+esc(age)+'</span>':'')+'</label></div>'});
+  return h+'</div>';
+}
+function deskScreen(){
+  var h='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(!desk&&deskRes)return h+skel();
+  if(!desk)return h+'<h2>Receiving Desk</h2><div class="sub">Exam Office receiver only. Log in once, then receive returned envelopes and verify checked ones in one go.</div><div class="box"><label for="f_xs" style="margin-top:0">Your employee code</label><input id="f_xs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.xs||'')+'">'
+    +'<label for="f_xp">Your PIN</label><input id="f_xp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="">'
+    +'<button id="go" onclick="deskLogin()">Open receiving desk</button></div>';
+  fixFil();
+  lastSlot=deskSlotHtml();lastBody=deskBodyHtml();
+  h+='<h2>Receiving Desk</h2><div class="sub">Logged in as '+esc(xC)+' &middot; <span id="dat">updated '+esc(desk.at)+'</span> &middot; refreshes every 10 s &middot; <a href="#" onclick="refreshNow();return false" style="color:var(--g);font-weight:600">Refresh now</a></div>';
+  h+='<div id="dtabs">'+deskTabsHtml()+'</div>';
+  h+='<div class="box"><div class="dtool"><div><label for="f_dq" style="margin-top:0">Search by teacher employee code, name, course, room</label>'
+    +'<input id="f_dq" type="search" autocomplete="off" autocapitalize="off" placeholder="e.g. 111335, Arooba, CS-101, I-101" value="'+esc(dq)+'" oninput="setDq(this.value)"></div>'
+    +'<div id="dslot">'+lastSlot+'</div>'
+    +'<div><label for="f_dsort" style="margin-top:0">Sort</label><select id="f_dsort" onchange="setDsort(this.value)">'
+    +'<option value="old"'+(dsort==='old'?' selected':'')+'>Waiting longest first</option><option value="new"'+(dsort==='new'?' selected':'')+'>Newest first</option>'
+    +'<option value="teacher"'+(dsort==='teacher'?' selected':'')+'>By teacher</option><option value="room"'+(dsort==='room'?' selected':'')+'>By room</option></select></div></div></div>';
+  h+='<div id="dbody">'+lastBody+'</div>';
+  return h+'<div class="two"><button class="lnk" onclick="deskOut()">Log out</button><a class="lnk" style="display:block;text-align:center;text-decoration:none" href="?a='+enc(A)+'">&#8249; Back to Home</a></div>';
+}
+/* any tap or key press counts as use, so the 10 minute logout only happens when nobody touches the screen */
+['pointerdown','keydown'].forEach(function(ev){document.addEventListener(ev,function(){if(desk)deskTouch()},true)});
+function deskVerify(){
+  if(busy)return;
+  var ids=Object.keys(vsel);if(!ids.length){say('Tick at least one envelope.','err');return}
+  if(!confirm('Verify '+ids.length+' envelope(s)? The award list has been received and this is final.'))return;
+  deskTouch();setBusy(true);
+  var items={};(desk.chk||[]).forEach(function(x){items[x.id]=x});
+  var done=0,fails=[],stop=false,seen=0;
+  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
+  function one(id,cb){
+    if(stop){cb();return}
+    var x=items[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete vsel[id]}
+        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+        seen++;prog();cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
+      }).envelopeScanAction(id,'verify',{emp:'',filled:'',absent:'',marked:'',staff:xC,pin:xP},x.k);
+    })();
+  }
+  function finish(){
+    busy=false;SC={};
+    msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':'Verified: '+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
+    kind=(stop||fails.length)?'err':'ok';
+    if(stop){deskOut(msg);return}
+    window.scrollTo(0,0);loadDesk(false);
+    if(done)popup('Verified',msg,fails.length>0,fails.length>0);
+  }
+  prog();
+  pool(ids.slice(0,1),1,one,function(){},function(){
+    if(stop||ids.length<2){finish();return}
+    pool(ids.slice(1),3,one,function(){},finish);
+  });
+}
+function deskDecide(dc){
+  if(busy)return;
+  var ids=Object.keys(dsel);if(!ids.length){say('Tick at least one envelope.','err');return}
+  if(!confirm(dc==='ok'?'Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?':'Send '+ids.length+' envelope(s) back to the invigilators?'))return;
+  deskTouch();setBusy(true);
+  var items={};desk.items.forEach(function(x){items[x.id]=x});
+  var done=0,fails=[],stop=false,seen=0;
+  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
+  function one(id,cb){
+    if(stop){cb();return}
+    var x=items[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete dsel[id]}
+        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+        seen++;prog();cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
+      }).envelopeDecideReturn(id,x.k,xC,xP,dc);
+    })();
+  }
+  function finish(){
+    busy=false;SC={};
+    msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':(dc==='ok'?'Received OK: ':'Sent back: ')+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
+    kind=(stop||fails.length)?'err':'ok';
+    if(stop){desk=null;xP='';xC='';deskOut(msg);return}
+    window.scrollTo(0,0);loadDesk(false);   /* fresh list from the server */
+    if(done)popup(dc==='ok'?'Received OK':'Sent back',msg,fails.length>0,fails.length>0);
+  }
+  prog();
+  /* the first envelope alone proves the PIN; only then the rest run 3 at a time */
+  pool(ids.slice(0,1),1,one,function(){},function(){
+    if(stop||ids.length<2){finish();return}
+    pool(ids.slice(1),3,one,function(){},finish);
+  });
+}
+/* ---- opening / leaving an envelope WITHOUT reloading the page (fast; search results stay in memory) ---- */
+function enc(x){return encodeURIComponent(x)}
+function openEnv(i){
+  var r=res[i];if(!r)return;
+  grab();ID=r.id;KEY=r.k;FS=true;o=null;showFix=false;showSeat=false;showUndo=false;msg='';kind='';S.n='';S.a='0';S.m='';
+  try{history.replaceState(null,'','?e='+enc(ID)+'&k='+enc(KEY)+'&a='+enc(A)+'&s=1')}catch(e){}
+  loadInfo();window.scrollTo(0,0);
+}
+function goHome(){
+  grab();ID='';KEY='';o=null;stale=false;showFix=false;showSeat=false;showUndo=false;msg='';kind='';
+  try{history.replaceState(null,'','?a='+enc(A))}catch(e){}
+  render();window.scrollTo(0,0);
+}
+function loadInfo(){
+  var id=ID,k=KEY,c=null;
+  try{c=JSON.parse(sessionStorage.getItem('envI:'+id)||'null')}catch(e){}
+  if(c&&c.found&&!c.denied&&c._t&&Date.now()-c._t<15000){delete c._t;setInfo(c,true);stale=true}else{o=null;stale=false}   /* an older copy is never shown: strength corrections must appear at once */
+  render();
+  google.script.run.withSuccessHandler(function(r){
+    if(id!==ID)return;
+    var kp=(stale&&o&&o.stage===r.stage)?{n:S.n,a:S.a,m:S.m}:null;
+    stale=false;setInfo(r);if(kp){S.n=kp.n;S.a=kp.a;S.m=kp.m}render();
+  }).withFailureHandler(function(e){
+    if(id!==ID)return;
+    if(stale){stale=false;msg='Could not refresh: '+((e&&e.message)||e);kind='err';render();return}
+    $('app').innerHTML='<div class="box"><h2>Error</h2><p>'+esc(e.message)+'</p><button onclick="loadInfo()">Try again</button></div>';
+  }).envelopeScanInfo(id,k);
+}
+
+/* ---- the envelope page follows the sheet: a strength correction (or any other change) appears without reloading ---- */
+function pollInfo(){
+  if(busy||stale||!ID||!o||!o.found||document.hidden)return;
+  var id=ID,k=KEY;
+  google.script.run.withSuccessHandler(function(r){
+    if(id!==ID||busy||!o||!r||!r.found)return;
+    if(JSON.stringify(o)===JSON.stringify(r))return;
+    cacheInfo(id,r);
+    var seatChg=String(r.seated)!==String(o.seated),ae=document.activeElement,typing=!!(ae&&(ae.tagName==='INPUT'||ae.tagName==='SELECT'));
+    if(r.stage!==o.stage){var was=o.stage;grab();setInfo(r);msg='This envelope was updated by someone else.';kind='ok';render();
+      if(was==='accept'&&r.stage==='mark'){msg='Receiving confirmed by the Exam Office.';popup('Receiving confirmed','The Exam Officer has confirmed this envelope. Your return is complete. Thank you.')}
+      else if(was==='accept'&&r.stage==='return'){msg='Sent back by the Exam Office.';kind='err';render();popup('Sent back','The Exam Officer sent this return back. Fix the counts and submit again.',true,true)}
+      return}
+    if(typing){o.seated=r.seated;o.status=r.status;syncRes(r);live();return}   /* do not disturb typing; the check line already uses the new strength */
+    grab();syncRes(r);o=r;if(seatChg){msg='Student strength was updated to '+r.seated+'.';kind='ok'}render();
+  }).withFailureHandler(function(){}).envelopeScanInfo(id,k);
+}
+setInterval(pollInfo,20000);
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)return;
+  if(ID&&o)pollInfo();else if(DESK&&desk)loadDesk(true);else if(DM&&dash)loadDash('',true);
+});
+/* ---- home page: find an envelope without its QR ---- */
+var sel={},sel2={},SC={};
+function cardHtml(r,i){
+  var g=isBad(r.status)?'bad':grp(r.status);
+  var a='<a class="res g-'+g+'" onclick="openEnv('+i+');return false" href="?e='+enc(r.id)+'&k='+enc(r.k)+'&a='+enc(A)+'&s=1"><b>'+esc(r.title)+'</b>'
+    +'<span>'+esc(r.code)+', '+esc(r.program)+' Sem '+esc(r.sem)+'</span><span>Room '+esc(r.room)+', '+esc(r.date)+', '+esc(r.slot)+'</span><i>'+esc(r.status)+'</i></a>';
+  if(r.status==='Awaiting Exam Office OK')return '<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(sel2[r.id]?'checked ':'')+'onchange="tg2('+i+',this.checked)">'+a+'</div>';
+  if(g!=='todo')return a;
+  return '<div class="rw"><input type="checkbox" aria-label="Select envelope" '+(sel[r.id]?'checked ':'')+'onchange="tg('+i+',this.checked)">'+a+'</div>';
+}
+function updBar(){
+  var b=$('bb');if(!b)return;
+  if(DESK&&!ID){var dn=Object.keys(dtab==='chk'?vsel:dsel).length,on=!!(desk&&dn>0);if(!on){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
+    b.style.display='block';document.body.style.paddingBottom='120px';
+    if(!busy)b.innerHTML=dtab==='chk'?'<div class="bbi"><button id="dbtn" onclick="deskVerify()">Award list received: Verify ('+dn+')</button></div>':'<div class="bbi"><button id="dbtn" onclick="deskDecide(\'ok\')">Envelope received: OK ('+dn+')</button><button class="lnk" style="padding:6px" onclick="deskDecide(\'back\')">Send back selected ('+dn+')</button></div>';return}
+  var n=Object.keys(sel).length,show=!ID&&!DM&&eState==='found'&&searched&&res&&res.length&&n>0&&(filt==='all'||filt==='todo');
+  if(!show){b.style.display='none';b.innerHTML='';document.body.style.paddingBottom='';return}
+  b.style.display='block';document.body.style.paddingBottom='84px';
+  if(!busy)b.innerHTML='<div class="bbi"><button id="bulk" onclick="bulkReceive()">Receive selected ('+n+')</button></div>';
+}
+function tg(i,c){var r=res[i];if(c)sel[r.id]=r.k;else delete sel[r.id];updBar()}
+function selAll(){grab();res.forEach(function(r){if(grp(r.status)==='todo')sel[r.id]=r.k});render()}
+function selNone(){grab();sel={};render()}
+function nm(id){for(var i=0;i<(res||[]).length;i++)if(res[i].id===id)return res[i].code+' Room '+res[i].room;return id}
+function dropCache(id){try{sessionStorage.removeItem('envI:'+id)}catch(e){}}
+function bulkReceive(){
+  if(busy)return;grab();
+  var ids=Object.keys(sel);
+  if(!ids.length){say('Select at least one envelope.','err');return}
+  if(eState!=='found'){say('Enter your employee code first.','err');return}
+  if(!confirm('Mark '+ids.length+' envelope(s) as received by '+empName+'?'))return;
+  setBusy(true);
+  var done=0,fails=[],p={emp:emp,filled:'',absent:'',marked:'',staff:'',pin:''};
+  function prog(n){var b=$('bulk');if(b)b.textContent='Receiving '+n+' of '+ids.length+'...'}
+  prog(0);
+  pool(ids,3,function(id,cb){
+    var k=sel[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete sel[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status='With invigilator'})}
+        else fails.push(nm(id)+' ('+(r.msg||'error')+')');
+        cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');cb();
+      }).envelopeScanAction(id,'receive',p,k);
+    })();
+  },prog,function(){busy=false;SC={};var m='Received '+done+' of '+ids.length+'.';if(fails.length)m+=' Not received: '+fails.join('; ');msg=m;kind=fails.length?'err':'ok';render();window.scrollTo(0,0)});
+}
+function tg2(i,c){var r=res[i];if(c)sel2[r.id]=r.k;else delete sel2[r.id];var b=$('bulk2');if(b)b.textContent='Envelope received: OK ('+Object.keys(sel2).length+')'}
+function selAll2(){grab();res.forEach(function(r){if(r.status==='Awaiting Exam Office OK')sel2[r.id]=r.k});render()}
+function bulkOk(){
+  if(busy)return;grab();
+  var ids=Object.keys(sel2);
+  if(!ids.length){say('Select at least one envelope.','err');return}
+  if(!S.rs.trim()||!S.rp.trim()){say('Enter your Exam Office employee code and PIN.','err');return}
+  if(!confirm('Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?'))return;
+  try{sessionStorage.setItem('envRs',S.rs.trim())}catch(e){}
+  setBusy(true);
+  var done=0,fails=[],code=S.rs.trim(),pin=S.rp,stop=false,seen=0;
+  function prog(){var b=$('bulk2');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
+  function one(id,cb){
+    if(stop){cb();return}
+    var k=sel2[id],tries=0;
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        if(r.ok){done++;delete sel2[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status=(r.info&&r.info.status)||'Returned OK'})}
+        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(nm(id)+' ('+(r.msg||'error')+')')}
+        seen++;prog();cb();
+      }).withFailureHandler(function(e){
+        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
+      }).envelopeDecideReturn(id,k,code,pin,'ok');
+    })();
+  }
+  function finish(){busy=false;SC={};S.rp='';
+    var m=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':'OK done for '+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
+    msg=m;kind=(stop||fails.length)?'err':'ok';render();window.scrollTo(0,0)}
+  prog();
+  /* the first envelope alone proves the code and PIN; only then the rest run 3 at a time */
+  pool(ids.slice(0,1),1,one,function(){},function(){
+    if(stop||ids.length<2){finish();return}
+    pool(ids.slice(1),3,one,function(){},finish);
+  });
+}
+function resultsHtml(){
+  if(!searched)return '';
+  if(!res||!res.length)return '<div class="empty">No envelope matched'+(S.d?' on this date. Tap "Any date" to search all dates.':'. Try fewer words.')+'</div>';
+  var cnt={all:res.length,todo:0,room:0,ret:0,chk:0,done:0};
+  res.forEach(function(r){cnt[grp(r.status)]++});
+  var h=note?'<div class="hint">'+esc(note)+'</div>':'';h+='<div class="chips">',keys=['all','todo','room','ret','chk','done'];
+  keys.forEach(function(k){if(k!=='all'&&!cnt[k])return;h+='<button class="chip'+(filt===k?' on':'')+'" onclick="setFilt(\''+k+'\')">'+(k==='all'?'All':GL[k])+' '+cnt[k]+'</button>'});
+  h+='</div>';
+  if(cnt.todo&&(filt==='all'||filt==='todo'))h+='<div class="two"><button class="lnk" onclick="selAll()">Select all not received</button><button class="lnk" onclick="selNone()">Clear selection</button></div>';
+  var nAw=0;res.forEach(function(r){if(r.status==='Awaiting Exam Office OK')nAw++});
+  if(nAw&&(filt==='all'||filt==='room'))h+='<div class="box"><div class="hint" style="margin:0 0 6px"><b>Exam Office receiver only.</b> Tick the envelopes in your hand ('+nAw+' waiting), then enter your code and PIN once.</div><button class="lnk" onclick="selAll2()">Select all awaiting OK</button>'
+    +'<label for="f_rs">Your employee code</label><input id="f_rs" type="text" autocomplete="off" autocapitalize="off" value="'+esc(S.rs)+'">'
+    +'<label for="f_rp">Your PIN</label><input id="f_rp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" value="'+esc(S.rp)+'">'
+    +'<button id="bulk2" onclick="bulkOk()">Envelope received: OK ('+Object.keys(sel2).length+')</button></div>';
+  var cards=[];res.forEach(function(r,i){if(filt==='all'||grp(r.status)===filt)cards.push(cardHtml(r,i))});
+  h+=cards.join('');
+  if(res.length>=30)h+='<div class="hint">Showing the first 30. Add a word or a date to narrow the list.</div>';
+  h+='<button class="lnk" onclick="doSearch(false,true)">Refresh list</button>';
+  return h;
+}
+function setFilt(k){grab();filt=k;render()}
+function homeScreen(){
+  var s='<h2>Find an envelope</h2><div class="sub">No QR needed. Search by room, course code, course title, teacher or invigilator name.</div><div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  var f='<label for="f_q">Search</label><input id="f_q" type="search" autocomplete="off" placeholder="Room, course code, title, name" value="'+esc(S.q)+'">'
+    +'<label for="f_d">Exam date (optional)</label><input id="f_d" type="date" value="'+esc(S.d)+'">'
+    +'<button id="go" onclick="doSearch()">Search</button>'
+    +'<div class="two"><button class="lnk" onclick="quick(today())">Today\'s envelopes</button><button class="lnk" onclick="quick(\'\')">Any date</button></div>';
+  return s+idBox(f)+(eState==='found'?resultsHtml():'');
+}
+function quick(d){var q=$('f_q'),e=$('f_d');if(q)q.value='';if(e)e.value=d;doSearch()}
+/* the same search done in the last 5 seconds is shown from memory (instant); "Refresh list" or any action always asks the server again */
+function doSearch(auto,force){
+  if(!auto)grab();var q=S.q.trim(),m=/[?&]e=([^&\s#]+)/.exec(q);
+  if(m){var k=/[?&]k=([^&\s#]+)/.exec(q);location.href='?e='+m[1]+(k?'&k='+k[1]:'')+'&a='+enc(A);return}
+  var key=q+'|'+S.d,c=SC[key];
+  function show(r){res=r;searched=true;filt='all';msg='';kind='';try{sessionStorage.setItem('envQ',JSON.stringify({q:S.q,d:S.d}))}catch(e3){}note=(!q&&!S.d&&r.length)?'Showing the next exam date: '+r[0].date+'. Type a word or pick a date to search elsewhere.':'';render()}
+  if(!force&&c&&Date.now()-c.t<5000){show(c.r);return}
+  setBusy(true);
+  google.script.run.withSuccessHandler(function(r){busy=false;SC[key]={t:Date.now(),r:r};show(r)}).withFailureHandler(fail).envelopeSearch(emp,q,S.d);
+}
+/* ---- envelope screen ---- */
+function render(){
+  grab();var Ap=$('app');
+  if(!A){Ap.innerHTML='<div class="box"><h2>Link incomplete</h2><p class="sub">Open this page from the QR on the envelope, or from the home link given by the Exam Office (it ends with ?a=...).</p></div>';return}
+  if(!ID&&DESK){Ap.innerHTML=deskScreen();return}
+  if(!ID&&DM){Ap.innerHTML=dashScreen();return}
+  if(!ID){Ap.innerHTML=homeScreen();return}
+  if(o&&o.denied){Ap.innerHTML='<div class="box"><h2>QR link not valid</h2><p class="sub">This link is missing its security key or is out of date. Ask the Exam Office to reprint the sticker, or <a href="?a='+esc(A)+'" onclick="goHome();return false">search for the envelope</a>.</p></div>';return}
+  if(!o){Ap.innerHTML=skel();return}
+  if(!o.found){Ap.innerHTML='<div class="box"><h2>Envelope not found</h2><div class="id">'+esc(ID)+'</div><p class="sub">This QR is not in the tracker. Ask the Exam Office to Sync again or reprint the tag. Or <a href="?a='+esc(A)+'" onclick="goHome();return false">search for the envelope</a>.</p></div>';return}
+  var st=o.stage,order=['receive','return','mark','verify'],labels=['Received','Returned','Checked','Verified'],idx=st==='done'?4:st==='accept'?1:order.indexOf(st),s='';
+  s+='<a class="lk" style="text-align:left;padding:12px 0 0" onclick="goHome();return false" href="?a='+esc(A)+'">Back to search</a>';
+  s+='<h2 style="margin-top:4px">'+esc(o.title)+'</h2><div class="sub">'+esc(o.code)+', '+esc(o.program)+' Sem '+esc(o.sem)+'</div><div class="id">'+esc(o.id)+'</div>'+(stale?'<div class="upd">Updating...</div>':'');
+  s+='<div class="steps">';for(var i=0;i<4;i++)s+='<div class="stp '+(i<idx?'done':i===idx?'now':'')+'">'+labels[i]+'</div>';s+='</div>';
+  s+='<div id="m" class="msg '+kind+'">'+esc(msg)+'</div>';
+  if(st==='accept'&&!showFix)s+=handoverBanner();
+  if(st==='mark'&&o.returned)s+='<div class="box okbox"><div class="ho-t">&#10003; Return confirmed by the Exam Office</div><div class="ho-b">The invigilator\'s work on this envelope is complete. Next step: the teacher checks the answer books.</div></div>';
+  s+='<div class="box">'+row('Room',o.room+(o.building?' ('+o.building+')':''))+row('Date',o.date)+row('Slot',o.slot)+row('Seated (this paper)',o.seated)+(o.inv?row('Invigilators',o.inv):'')
+    +row('Received',o.received||'-')+row('Returned',o.returned||(o.req?'Waiting for Exam Office OK':'-'))+row('Filled books / Absent',(o.sheets===''?'-':o.sheets)+' / '+(o.absent===''?'-':o.absent))
+    +row('Checked (teacher)',(o.marked||'-')+(o.markedBooks!==''&&o.markedBooks!=null?' | '+o.markedBooks+' books'+'':''))+(o.mcqN?row('UMC cases (book not in envelope)',String(o.mcqN)):'')+row('Verified (Exam Office)',o.verified||'-')+row('Status',o.status)+'</div>';
+  s+=stageBox()+undoBox()+seatBox()+'<a class="lk" onclick="goHome();return false" href="?a='+esc(A)+'">Search another envelope</a>';
+  Ap.innerHTML=s;live();
+}
+/* after every screen: Enter submits the code or the search, the code box is ready to type in, and the bulk bar is updated */
+(function(){var _r=render;render=function(){_r();
+  var e=$('f_emp');if(e){e.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eLookup()}};if(!e.value){try{e.focus()}catch(x){}}}
+  var t=$('f_tn');if(t)t.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();eRegister()}};
+  var q=$('f_q');if(q)q.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();q.blur();doSearch()}};
+  var xs=$('f_xs');if(xs)xs.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();var p=$('f_xp');if(p)p.focus()}};
+  var xp=$('f_xp');if(xp)xp.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();deskLogin()}};
+  var tn=$('tn');if(tn)tn.innerHTML=(!ID&&(DESK||DM))?'<a href="?a='+enc(A)+'">&#8249; Home</a>'+(DESK?'<a href="?d=1&a='+enc(A)+'">Dashboard</a>':'<a href="?x=1&a='+enc(A)+'">Receiving Desk</a>'):'';
+  updBar();
+}})();
+/* ---- completion popup: shown after every successful step so nobody leaves unsure whether it was saved ---- */
+var popT=null;
+function popClose(){clearTimeout(popT);var e=$('pop');if(e)e.parentNode.removeChild(e)}
+function popup(title,text,warn,keep){
+  popClose();var d=document.createElement('div');d.id='pop';d.className='pop';d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','pop_t');
+  d.innerHTML='<div class="pcard'+(warn?' pw':'')+'"><div class="pi">'+(warn?'&#9888;':'&#10003;')+'</div><div class="pt" id="pop_t">'+esc(title)+'</div>'+(text?'<div class="pm">'+esc(text)+'</div>':'')+'<button type="button" id="pop_ok">OK</button></div>';
+  d.addEventListener('click',function(ev){if(ev.target===d)popClose()});
+  document.body.appendChild(d);var b=$('pop_ok');b.onclick=popClose;try{b.focus()}catch(e){}
   if(!keep)popT=setTimeout(popClose,7000);
 }
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape')popClose()});
