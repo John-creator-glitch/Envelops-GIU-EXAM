@@ -1,4 +1,4 @@
-<!-- Envelope Tracker page v12 (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
+<!-- Envelope Tracker page v13 fast bulk (live data: no stale copies, auto follow of the sheet). Put this file, named index.html, on GitHub Pages. Nothing inside needs editing. -->
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="app" content="envelope-tracker-page"><title>Envelope Tracker</title><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0e3b2e">
 <link rel="preconnect" href="https://script.google.com"><link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <style>
@@ -213,6 +213,29 @@ function blocked(){if(stale){say('Updating this envelope, try again in a moment.
 function pool(ids,n,fn,prog,end){var i=0,run=0,fin=0;
   function go(){while(run<n&&i<ids.length){(function(id){run++;fn(id,function(){run--;fin++;prog(fin);if(fin===ids.length)end();else go()})})(ids[i++])}}
   if(!ids.length)end();else go()}
+/* ONE server call for up to 40 envelopes (the server does them in one go). If the server has no bulk function yet (old Code.gs), fallback(rest) runs the old one-by-one way.
+   onRes(r) is called for every envelope's own answer; onFatal(msg) when the whole call is refused (wrong PIN, network); end() when all chunks are done. */
+function bulkRun(fn,ids,keyOf,tail,onRes,onFatal,end,prog,fallback){
+  var CH=40,pos=0,tries=0;
+  function next(){
+    if(pos>=ids.length){end();return}
+    var part=ids.slice(pos,pos+CH),args=[part,part.map(keyOf)].concat(tail);
+    (function send(){
+      google.script.run.withSuccessHandler(function(r){
+        if(r&&r.busy&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+        tries=0;
+        if(!r||!r.ok||!r.results){onFatal((r&&r.msg)||'The server did not answer.');return}
+        r.results.forEach(onRes);pos+=part.length;prog(pos);next();
+      }).withFailureHandler(function(e){
+        var m=(e&&e.message)||'';
+        if(/Unknown request/.test(m)){fallback(ids.slice(pos));return}
+        if(tries<2&&/Could not reach|took too long/.test(m)){tries++;setTimeout(send,1500);return}
+        onFatal(m||'error');
+      })[fn].apply(null,args);
+    })();
+  }
+  next();
+}
 /* ---- status groups (used for the colour bar and the filter buttons on the home page) ---- */
 var GL={todo:'Not received',acc:'Awaiting Exam Office OK',room:'With invigilator',ret:'Returned',chk:'Checked',done:'Verified'};
 function grp(s){s=String(s||'');
@@ -622,23 +645,9 @@ function deskVerify(){
   if(!confirm('Verify '+ids.length+' envelope(s)? The award list has been received and this is final.'))return;
   deskTouch();setBusy(true);
   var items={};(desk.chk||[]).forEach(function(x){items[x.id]=x});
-  var done=0,fails=[],stop=false,seen=0;
-  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
-  function one(id,cb){
-    if(stop){cb();return}
-    var x=items[id],tries=0;
-    (function send(){
-      google.script.run.withSuccessHandler(function(r){
-        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
-        if(r.ok){done++;delete vsel[id]}
-        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
-        seen++;prog();cb();
-      }).withFailureHandler(function(e){
-        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
-        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
-      }).envelopeScanAction(id,'verify',{emp:'',filled:'',absent:'',marked:'',staff:xC,pin:xP},x.k);
-    })();
-  }
+  var done=0,fails=[],stop=false;
+  function lab(id){var x=items[id];return x?x.code+' Room '+x.room:id}
+  function prog(n){var b=$('dbtn');if(b)b.textContent='Working '+n+' of '+ids.length+'...'}
   function finish(){
     busy=false;SC={};
     msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':'Verified: '+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
@@ -647,11 +656,32 @@ function deskVerify(){
     window.scrollTo(0,0);loadDesk(false);
     if(done)popup('Verified',msg,fails.length>0,fails.length>0);
   }
-  prog();
-  pool(ids.slice(0,1),1,one,function(){},function(){
-    if(stop||ids.length<2){finish();return}
-    pool(ids.slice(1),3,one,function(){},finish);
-  });
+  prog(0);
+  function legacy(rest){
+    var base=ids.length-rest.length,seen=0;
+    function one(id,cb){
+      if(stop){cb();return}
+      var x=items[id],tries=0;
+      (function send(){
+        google.script.run.withSuccessHandler(function(r){
+          if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+          if(r.ok){done++;delete vsel[id]}
+          else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+          seen++;prog(base+seen);cb();
+        }).withFailureHandler(function(e){
+          if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+          fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog(base+seen);cb();
+        }).envelopeScanAction(id,'verify',{emp:'',filled:'',absent:'',marked:'',staff:xC,pin:xP},x.k);
+      })();
+    }
+    pool(rest.slice(0,1),1,one,function(){},function(){
+      if(stop||rest.length<2){finish();return}
+      pool(rest.slice(1),3,one,function(){},finish);
+    });
+  }
+  bulkRun('envelopeBulkVerify',ids,function(id){return items[id].k},[xC,xP],function(r){
+    if(r.ok){done++;delete vsel[r.id]}else fails.push(lab(r.id)+' ('+(r.msg||'error')+')');
+  },function(m){if(/Wrong employee code or PIN|Too many wrong/.test(m||''))stop=true;fails.push(m);finish()},finish,prog,legacy);
 }
 function deskDecide(dc){
   if(busy)return;
@@ -659,23 +689,9 @@ function deskDecide(dc){
   if(!confirm(dc==='ok'?'Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?':'Send '+ids.length+' envelope(s) back to the invigilators?'))return;
   deskTouch();setBusy(true);
   var items={};desk.items.forEach(function(x){items[x.id]=x});
-  var done=0,fails=[],stop=false,seen=0;
-  function prog(){var b=$('dbtn');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
-  function one(id,cb){
-    if(stop){cb();return}
-    var x=items[id],tries=0;
-    (function send(){
-      google.script.run.withSuccessHandler(function(r){
-        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
-        if(r.ok){done++;delete dsel[id]}
-        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
-        seen++;prog();cb();
-      }).withFailureHandler(function(e){
-        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
-        fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
-      }).envelopeDecideReturn(id,x.k,xC,xP,dc);
-    })();
-  }
+  var done=0,fails=[],stop=false;
+  function lab(id){var x=items[id];return x?x.code+' Room '+x.room:id}
+  function prog(n){var b=$('dbtn');if(b)b.textContent='Working '+n+' of '+ids.length+'...'}
   function finish(){
     busy=false;SC={};
     msg=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':(dc==='ok'?'Received OK: ':'Sent back: ')+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
@@ -684,12 +700,33 @@ function deskDecide(dc){
     window.scrollTo(0,0);loadDesk(false);   /* fresh list from the server */
     if(done)popup(dc==='ok'?'Received OK':'Sent back',msg,fails.length>0,fails.length>0);
   }
-  prog();
-  /* the first envelope alone proves the PIN; only then the rest run 3 at a time */
-  pool(ids.slice(0,1),1,one,function(){},function(){
-    if(stop||ids.length<2){finish();return}
-    pool(ids.slice(1),3,one,function(){},finish);
-  });
+  prog(0);
+  function legacy(rest){
+    var base=ids.length-rest.length,seen=0;
+    function one(id,cb){
+      if(stop){cb();return}
+      var x=items[id],tries=0;
+      (function send(){
+        google.script.run.withSuccessHandler(function(r){
+          if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+          if(r.ok){done++;delete dsel[id]}
+          else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(x.code+' Room '+x.room+' ('+(r.msg||'error')+')')}
+          seen++;prog(base+seen);cb();
+        }).withFailureHandler(function(e){
+          if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+          fails.push(x.code+' Room '+x.room+' ('+((e&&e.message)||'error')+')');seen++;prog(base+seen);cb();
+        }).envelopeDecideReturn(id,x.k,xC,xP,dc);
+      })();
+    }
+    /* the first envelope alone proves the PIN; only then the rest run 3 at a time */
+    pool(rest.slice(0,1),1,one,function(){},function(){
+      if(stop||rest.length<2){finish();return}
+      pool(rest.slice(1),3,one,function(){},finish);
+    });
+  }
+  bulkRun('envelopeBulkDecide',ids,function(id){return items[id].k},[xC,xP,dc],function(r){
+    if(r.ok){done++;delete dsel[r.id]}else fails.push(lab(r.id)+' ('+(r.msg||'error')+')');
+  },function(m){if(/Wrong employee code or PIN|Too many wrong/.test(m||''))stop=true;fails.push(m);finish()},finish,prog,legacy);
 }
 /* ---- opening / leaving an envelope WITHOUT reloading the page (fast; search results stay in memory) ---- */
 function enc(x){return encodeURIComponent(x)}
@@ -737,7 +774,7 @@ function pollInfo(){
     grab();syncRes(r);o=r;if(seatChg){msg='Student strength was updated to '+r.seated+'.';kind='ok'}render();
   }).withFailureHandler(function(){}).envelopeScanInfo(id,k);
 }
-setInterval(pollInfo,20000);
+setInterval(pollInfo,30000);
 document.addEventListener('visibilitychange',function(){
   if(document.hidden)return;
   if(ID&&o)pollInfo();else if(DESK&&desk)loadDesk(true);else if(DM&&dash)loadDash('',true);
@@ -776,21 +813,30 @@ function bulkReceive(){
   setBusy(true);
   var done=0,fails=[],p={emp:emp,filled:'',absent:'',marked:'',staff:'',pin:''};
   function prog(n){var b=$('bulk');if(b)b.textContent='Receiving '+n+' of '+ids.length+'...'}
+  function fin(){busy=false;SC={};var m='Received '+done+' of '+ids.length+'.';if(fails.length)m+=' Not received: '+fails.join('; ');msg=m;kind=fails.length?'err':'ok';render();window.scrollTo(0,0)}
   prog(0);
-  pool(ids,3,function(id,cb){
-    var k=sel[id],tries=0;
-    (function send(){
-      google.script.run.withSuccessHandler(function(r){
-        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
-        if(r.ok){done++;delete sel[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status='With invigilator'})}
-        else fails.push(nm(id)+' ('+(r.msg||'error')+')');
-        cb();
-      }).withFailureHandler(function(e){
-        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
-        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');cb();
-      }).envelopeScanAction(id,'receive',p,k);
-    })();
-  },prog,function(){busy=false;SC={};var m='Received '+done+' of '+ids.length+'.';if(fails.length)m+=' Not received: '+fails.join('; ');msg=m;kind=fails.length?'err':'ok';render();window.scrollTo(0,0)});
+  /* old way (one call per envelope, 3 at a time): only used if the server has no bulk function yet */
+  function legacy(rest){
+    var base=ids.length-rest.length;
+    pool(rest,3,function(id,cb){
+      var k=sel[id],tries=0;
+      (function send(){
+        google.script.run.withSuccessHandler(function(r){
+          if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+          if(r.ok){done++;delete sel[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status='With invigilator'})}
+          else fails.push(nm(id)+' ('+(r.msg||'error')+')');
+          cb();
+        }).withFailureHandler(function(e){
+          if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+          fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');cb();
+        }).envelopeScanAction(id,'receive',p,k);
+      })();
+    },function(n){prog(base+n)},fin);
+  }
+  bulkRun('envelopeBulkReceive',ids,function(id){return sel[id]},[emp],function(r){
+    if(r.ok){done++;delete sel[r.id];dropCache(r.id);res.forEach(function(x){if(x.id===r.id)x.status='With invigilator'})}
+    else fails.push(nm(r.id)+' ('+(r.msg||'error')+')');
+  },function(m){fails.push(m);fin()},fin,prog,legacy);
 }
 function tg2(i,c){var r=res[i];if(c)sel2[r.id]=r.k;else delete sel2[r.id];var b=$('bulk2');if(b)b.textContent='Envelope received: OK ('+Object.keys(sel2).length+')'}
 function selAll2(){grab();res.forEach(function(r){if(r.status==='Awaiting Exam Office OK')sel2[r.id]=r.k});render()}
@@ -802,32 +848,39 @@ function bulkOk(){
   if(!confirm('Confirm: you have '+ids.length+' envelope(s) in your hand and the counts are right?'))return;
   try{sessionStorage.setItem('envRs',S.rs.trim())}catch(e){}
   setBusy(true);
-  var done=0,fails=[],code=S.rs.trim(),pin=S.rp,stop=false,seen=0;
-  function prog(){var b=$('bulk2');if(b)b.textContent='Working '+seen+' of '+ids.length+'...'}
-  function one(id,cb){
-    if(stop){cb();return}
-    var k=sel2[id],tries=0;
-    (function send(){
-      google.script.run.withSuccessHandler(function(r){
-        if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
-        if(r.ok){done++;delete sel2[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status=(r.info&&r.info.status)||'Returned OK'})}
-        else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(nm(id)+' ('+(r.msg||'error')+')')}
-        seen++;prog();cb();
-      }).withFailureHandler(function(e){
-        if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
-        fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');seen++;prog();cb();
-      }).envelopeDecideReturn(id,k,code,pin,'ok');
-    })();
-  }
-  function finish(){busy=false;SC={};S.rp='';
+  var done=0,fails=[],code=S.rs.trim(),pin=S.rp,stop=false;
+  function prog(n){var b=$('bulk2');if(b)b.textContent='Working '+n+' of '+ids.length+'...'}
+  function fin(){busy=false;SC={};S.rp='';
     var m=stop?fails[0]+'. Nothing else was tried, so your PIN is not locked.':'OK done for '+done+' of '+ids.length+'.'+(fails.length?' Not done: '+fails.join('; '):'');
     msg=m;kind=(stop||fails.length)?'err':'ok';render();window.scrollTo(0,0)}
-  prog();
-  /* the first envelope alone proves the code and PIN; only then the rest run 3 at a time */
-  pool(ids.slice(0,1),1,one,function(){},function(){
-    if(stop||ids.length<2){finish();return}
-    pool(ids.slice(1),3,one,function(){},finish);
-  });
+  prog(0);
+  function legacy(rest){
+    var base=ids.length-rest.length,seen=0;
+    function one(id,cb){
+      if(stop){cb();return}
+      var k=sel2[id],tries=0;
+      (function send(){
+        google.script.run.withSuccessHandler(function(r){
+          if(!r.ok&&/System busy/.test(r.msg||'')&&tries<6){tries++;setTimeout(send,1000+tries*700+Math.random()*600);return}
+          if(r.ok){done++;delete sel2[id];dropCache(id);res.forEach(function(x){if(x.id===id)x.status=(r.info&&r.info.status)||'Returned OK'})}
+          else{if(/Wrong employee code or PIN|Too many wrong/.test(r.msg||''))stop=true;fails.push(nm(id)+' ('+(r.msg||'error')+')')}
+          seen++;prog(base+seen);cb();
+        }).withFailureHandler(function(e){
+          if(tries<2&&/Could not reach|took too long/.test((e&&e.message)||'')){tries++;setTimeout(send,1500);return}
+          fails.push(nm(id)+' ('+((e&&e.message)||'error')+')');seen++;prog(base+seen);cb();
+        }).envelopeDecideReturn(id,k,code,pin,'ok');
+      })();
+    }
+    /* the first envelope alone proves the code and PIN; only then the rest run 3 at a time */
+    pool(rest.slice(0,1),1,one,function(){},function(){
+      if(stop||rest.length<2){fin();return}
+      pool(rest.slice(1),3,one,function(){},fin);
+    });
+  }
+  bulkRun('envelopeBulkDecide',ids,function(id){return sel2[id]},[code,pin,'ok'],function(r){
+    if(r.ok){done++;delete sel2[r.id];dropCache(r.id);res.forEach(function(x){if(x.id===r.id)x.status=(r.info&&r.info.status)||'Returned OK'})}
+    else fails.push(nm(r.id)+' ('+(r.msg||'error')+')');
+  },function(m){if(/Wrong employee code or PIN|Too many wrong/.test(m||''))stop=true;fails.push(m);fin()},fin,prog,legacy);
 }
 function resultsHtml(){
   if(!searched)return '';
